@@ -21,3 +21,6 @@ psql:            ## Open a psql shell as the admin user
 
 reset:           ## DANGER: wipe the database volume and restart fresh
 	docker compose down -v && docker compose up -d
+
+seed:            ## Generate & load synthetic ERP data (override: make seed SEED=7)
+	set -a && . ./.env && set +a && cd backend && uv run python -m data_generator --seed $${SEED:-42}

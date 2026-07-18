@@ -1,0 +1,14 @@
+[project]
+name = "supplyscope-backend"
+version = "0.1.0"
+description = "SupplyScope backend — agentic analytics for EPC supply chain (PFE, GETS/IHEC Carthage)"
+requires-python = ">=3.11"
+dependencies = [
+    "psycopg[binary]>=3.2",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[tool.ruff]
+line-length = 100
