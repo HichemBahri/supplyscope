@@ -1,6 +1,6 @@
 """One-call smoke test of the LLM factory against the real API.
 
-Run from backend/:  uv run python scripts/smoke_llm.py
+Run from backend/ (module form): uv run python -m scripts.smoke_llm
 Cost: a fraction of a cent (fast tier, tiny prompt).
 """
 from app.llm.factory import get_llm
