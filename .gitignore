@@ -25,3 +25,4 @@ build/
 *.dump
 *.csv.gz
 docs/_build/
+*:Zone.Identifier
