@@ -28,5 +28,7 @@ class AgentState(TypedDict, total=False):
     truncated: bool
     duration_ms: float
     error: str                   # set when the loop gave up
+    # visualization
+    chart: dict          # validated chart spec (see app.agent.charts)
     # output
     answer: str

@@ -27,16 +27,20 @@ CHECKS: list[tuple[str, str, str]] = [
      f"SELECT count(*) FROM erp.supplier_quotations WHERE status='selected' AND tbe_score < {C.TBE_PASS_THRESHOLD}",
      "must be 0"),
     ("Projects overspending >115% of contract (TND-normalized) — story allows 1",
-     """WITH fx(cur, rate) AS (VALUES ('TND',1.00),('EUR',3.40),('USD',3.10),('LYD',0.64))
-        SELECT count(*) FROM (
+     """SELECT count(*) FROM (
           SELECT p.project_id
           FROM erp.projects p
-          JOIN fx fp ON fp.cur = p.currency
+          JOIN erp.fx_rates fp ON fp.currency = p.currency
           JOIN erp.purchase_orders po USING (project_id)
-          JOIN fx fpo ON fpo.cur = po.currency
-          GROUP BY p.project_id, p.contract_value, fp.rate
-          HAVING sum(po.total_amount * fpo.rate) > 1.15 * p.contract_value * fp.rate
+          JOIN erp.fx_rates fpo ON fpo.currency = po.currency
+          GROUP BY p.project_id, p.contract_value, fp.rate_to_tnd
+          HAVING sum(po.total_amount * fpo.rate_to_tnd) > 1.15 * p.contract_value * fp.rate_to_tnd
         ) x""",
+     "must be 0"),
+    ("Won proposals without a project (rows)",
+     """SELECT count(*) FROM erp.proposals pr
+        WHERE pr.status='won'
+          AND NOT EXISTS (SELECT 1 FROM erp.projects p WHERE p.proposal_id = pr.proposal_id)""",
      "must be 0"),
     ("RFQs on non-validated BoQs (rows)",
      """SELECT count(*) FROM erp.rfqs r JOIN erp.boqs b USING (boq_id)
@@ -69,15 +73,14 @@ STORY_CHECKS: list[tuple[str, str]] = [
         FROM erp.shipments s JOIN erp.sites st ON st.site_id=s.destination_site_id
         WHERE st.country='Libye' AND customs_clearance_date IS NOT NULL"""),
     ("S4 worst spend/contract ratio, TND-normalized (overbudget project)",
-     f"""WITH fx(cur, rate) AS (VALUES ('TND',1.00),('EUR',3.40),('USD',3.10),('LYD',0.64))
-        SELECT p.project_code,
-               round((sum(po.total_amount * fpo.rate)
-                      / (p.contract_value * fp.rate))::numeric, 3) AS ratio
+     f"""SELECT p.project_code,
+               round((sum(po.total_amount * fpo.rate_to_tnd)
+                      / (p.contract_value * fp.rate_to_tnd))::numeric, 3) AS ratio
         FROM erp.projects p
-        JOIN fx fp ON fp.cur = p.currency
+        JOIN erp.fx_rates fp ON fp.currency = p.currency
         JOIN erp.purchase_orders po USING (project_id)
-        JOIN fx fpo ON fpo.cur = po.currency
-        GROUP BY p.project_id, fp.rate ORDER BY ratio DESC LIMIT 1"""),
+        JOIN erp.fx_rates fpo ON fpo.currency = po.currency
+        GROUP BY p.project_id, fp.rate_to_tnd ORDER BY ratio DESC LIMIT 1"""),
 ]
 
 

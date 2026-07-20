@@ -5,12 +5,14 @@ The LLM is injected (build_nodes) so tests can substitute a scripted fake.
 """
 from __future__ import annotations
 
+import json
 import re
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.agent import prompts
+from app.agent.charts import ChartSpecError, parse_chart_spec
 from app.agent.state import AgentState
 from app.db.safe_executor import (
     SQLExecutionError,
@@ -20,6 +22,7 @@ from app.db.safe_executor import (
 
 MAX_SQL_ATTEMPTS = 3
 _SQL_FENCE = re.compile(r"```sql\s*(.+?)```", re.DOTALL | re.IGNORECASE)
+_JSON_FENCE = re.compile(r"```json\s*(.+?)```", re.DOTALL | re.IGNORECASE)
 _ANY_FENCE = re.compile(r"```\s*(.+?)```", re.DOTALL)
 
 
@@ -91,6 +94,31 @@ def build_nodes(llm: BaseChatModel):
         ])
         return {"sql": extract_sql(reply.content)}
 
+    def decide_chart(state: AgentState) -> AgentState:
+        """Pick a chart spec for the result; one repair retry; table fallback."""
+        if not state.get("row_count"):
+            return {"chart": {"chart_type": "table", "title": "Résultat"}}
+        user = HumanMessage(prompts.CHART_USER.format(
+            question=state["question"],
+            columns=state["columns"],
+            sample_rows=_result_table(state, max_rows=5)))
+        messages = [SystemMessage(prompts.CHART_SYSTEM), user]
+        for attempt in range(2):
+            reply = llm.invoke(messages)
+            raw = reply.content
+            if m := (_JSON_FENCE.search(raw) or _ANY_FENCE.search(raw)):
+                raw = m.group(1)
+            try:
+                spec = parse_chart_spec(raw.strip(), state["columns"])
+                return {"chart": spec.model_dump()}
+            except (ChartSpecError, json.JSONDecodeError) as exc:
+                messages = [SystemMessage(prompts.CHART_SYSTEM), user,
+                            reply,
+                            HumanMessage(prompts.CHART_FIX_USER.format(error=str(exc)))]
+        # both attempts invalid: universal fallback
+        return {"chart": {"chart_type": "table",
+                          "title": state["question"][:80]}}
+
     def synthesize_answer(state: AgentState) -> AgentState:
         if state.get("error"):
             return {"answer": prompts.FAILURE_ANSWER.format(
@@ -107,4 +135,4 @@ def build_nodes(llm: BaseChatModel):
         ])
         return {"answer": reply.content.strip()}
 
-    return generate_sql, execute_sql, fix_sql, synthesize_answer
+    return generate_sql, execute_sql, fix_sql, decide_chart, synthesize_answer

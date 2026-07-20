@@ -38,6 +38,7 @@ def test_extract_sql_variants():
 def test_happy_path_no_correction():
     llm = fake_llm(
         "```sql\nSELECT count(*) AS n FROM erp.projects WHERE status='active'\n```",
+        '```json\n{"chart_type":"kpi","title":"Projets actifs","value_field":"n"}\n```',
         "There are N active projects.",
     )
     out = build_graph(llm).invoke(dict(BASE_STATE))
@@ -51,6 +52,7 @@ def test_self_correction_path():
     llm = fake_llm(
         "```sql\nSELECT nonexistent_col FROM erp.projects\n```",   # fails
         "```sql\nSELECT count(*) AS n FROM erp.projects\n```",     # fix works
+        '```json\n{"chart_type":"kpi","title":"Projets actifs","value_field":"n"}\n```',
         "Answer after one correction.",
     )
     out = build_graph(llm).invoke(dict(BASE_STATE))
@@ -75,6 +77,7 @@ def test_write_attempt_is_blocked_and_corrected():
     llm = fake_llm(
         "```sql\nDELETE FROM erp.projects\n```",                  # validator blocks
         "```sql\nSELECT count(*) AS n FROM erp.projects\n```",
+        '```json\n{"chart_type":"kpi","title":"Projets actifs","value_field":"n"}\n```',
         "Blocked then answered.",
     )
     out = build_graph(llm).invoke(dict(BASE_STATE))

@@ -38,7 +38,7 @@ class Simulator:
     def __init__(self, seed: int = C.DEFAULT_SEED):
         self.rng = random.Random(seed)
         self.rows: dict[str, list[tuple]] = {t: [] for t in (
-            "clients", "suppliers", "materials", "sites",
+            "clients", "suppliers", "materials", "sites", "fx_rates",
             "tenders", "proposals", "projects",
             "boqs", "boq_lines", "rfqs", "supplier_quotations",
             "purchase_orders", "po_lines", "payments",
@@ -119,6 +119,8 @@ class Simulator:
                 code = f"MAT-{category[:4].upper()}-{i:02d}"
                 mid = self._add("materials", (code, name, category, unit, price, "TND"))
                 self.material_info[mid] = {"category": category, "unit": unit, "ref_price": price}
+        for cur, rate in C.FX_TO_TND.items():
+            self._add("fx_rates", (cur, rate))
         for code, name, country, region, stype in R.SITES:
             sid = self._add("sites", (code, name, country, region, stype))
             self.site_info[sid] = {"country": country, "type": stype}
@@ -176,6 +178,8 @@ class Simulator:
                 status, decision = "submitted", None
             else:
                 won = self.rng.random() < C.WIN_RATE
+                if won and len(self.rows["projects"]) >= C.MAX_PROJECTS:
+                    won = False   # portfolio full: coherence requires losing this bid
                 status = "won" if won else "lost"
         prop_id = self._add("proposals", (
             tender_id, submitted, proposed,

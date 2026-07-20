@@ -18,6 +18,10 @@ def test_schema_doc_contains_tables_comments_fks_and_enums():
     assert "po_id → erp.purchase_orders.po_id" in doc
     # CHECK constraints expose valid enum values to the agent
     assert "'customs_hold'" in doc and "'letter_of_credit'" in doc
+    # v2: sample values for non-enum text columns (data vocabulary)
+    assert "'Libye'" in doc and "'Tunisie'" in doc
+    # v2.1: FX dimension visible to the agent
+    assert "### erp.fx_rates" in doc and "rate_to_tnd" in doc
 
 
 @pytest.mark.integration

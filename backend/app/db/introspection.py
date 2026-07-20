@@ -76,6 +76,33 @@ def _prettify_check(definition: str) -> str:
     return out
 
 
+_MAX_ENUMLIKE_CARDINALITY = 15
+
+
+def _attach_sample_values(cur, tables: dict) -> None:
+    """For text columns whose values are NOT already enumerated by a CHECK
+    constraint, list the distinct values when there are few of them.
+
+    Motivated by a real agent failure: the model guessed country='Libya'
+    while the data stores 'Libye' — schema structure alone does not teach
+    data vocabulary. Low-cardinality value lists close that gap.
+    """
+    for tname, info in tables.items():
+        enumerated = " ".join(info["checks"])
+        for col, typ, _nullable, _comment in info["columns"]:
+            if typ != "text" or f"{col} IN (" in enumerated:
+                continue
+            cur.execute(
+                f"SELECT count(DISTINCT {col}) FROM {_SCHEMA}.{tname}")
+            n = cur.fetchone()[0]
+            if 0 < n <= _MAX_ENUMLIKE_CARDINALITY:
+                cur.execute(
+                    f"SELECT DISTINCT {col} FROM {_SCHEMA}.{tname} "
+                    f"WHERE {col} IS NOT NULL ORDER BY 1")
+                vals = ", ".join(repr(r[0]) for r in cur.fetchall())
+                info.setdefault("samples", {})[col] = vals
+
+
 def build_schema_doc(dsn: str) -> str:
     """Render the erp schema as a markdown document for LLM consumption."""
     with psycopg.connect(dsn) as conn, conn.cursor() as cur:
@@ -93,6 +120,7 @@ def build_schema_doc(dsn: str) -> str:
         cur.execute(_CHECKS_SQL, (_SCHEMA,))
         for t, definition in cur.fetchall():
             tables[t.split(".")[-1]]["checks"].append(_prettify_check(definition))
+        _attach_sample_values(cur, tables)
 
     parts: list[str] = [
         f"PostgreSQL schema `{_SCHEMA}` — {len(tables)} tables. "
@@ -107,6 +135,8 @@ def build_schema_doc(dsn: str) -> str:
             line = f"- {col} {typ}{'' if nullable else ' NOT NULL'}"
             if comment:
                 line += f" — {comment}"
+            if (samples := info.get("samples", {}).get(col)):
+                line += f" [values: {samples}]"
             cols.append(line)
         parts.append("\n".join(cols))
         if info["fks"]:

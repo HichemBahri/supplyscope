@@ -31,6 +31,7 @@ class AgentAnswer:
     truncated: bool
     duration_ms: float
     attempts: list[SqlAttempt]
+    chart: dict
     failed: bool
 
 
@@ -52,5 +53,6 @@ def ask(question: str, tier: Tier = "fast") -> AgentAnswer:
         truncated=out.get("truncated", False),
         duration_ms=out.get("duration_ms", 0.0),
         attempts=out.get("attempts", []),
+        chart=out.get("chart", {}),
         failed=bool(out.get("error")),
     )

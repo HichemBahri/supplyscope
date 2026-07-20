@@ -461,3 +461,20 @@ CREATE INDEX idx_assign_asset          ON erp.asset_assignments(asset_id);
 CREATE INDEX idx_assign_project        ON erp.asset_assignments(project_id);
 CREATE INDEX idx_maint_asset           ON erp.maintenance_events(asset_id);
 CREATE INDEX idx_maint_date            ON erp.maintenance_events(event_date);
+
+-- =============================================================================
+-- v2.1 ADDENDUM — FX dimension
+-- Motivated by a real agent failure: cross-currency spend-vs-contract
+-- comparisons were impossible without conversion rates (the "overspend"
+-- question silently excluded multi-currency projects).
+-- Simplification (documented): rates are period-average constants, not a
+-- daily time series.
+-- =============================================================================
+CREATE TABLE erp.fx_rates (
+    fx_id       integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    currency    text NOT NULL UNIQUE CHECK (currency IN ('TND','EUR','USD','LYD')),
+    rate_to_tnd numeric(10,4) NOT NULL CHECK (rate_to_tnd > 0)
+);
+COMMENT ON TABLE erp.fx_rates IS
+  'Indicative average exchange rates to Tunisian Dinar (TND). To compare or total amounts across currencies, convert each amount to TND: amount * rate_to_tnd (join on the currency column of the document). Rates are period-average constants (simplification).';
+COMMENT ON COLUMN erp.fx_rates.rate_to_tnd IS 'Multiply an amount in this currency by rate_to_tnd to obtain TND.';

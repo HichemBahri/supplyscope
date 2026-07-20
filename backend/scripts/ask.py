@@ -34,6 +34,10 @@ def main() -> None:
                 print(" | ".join("NULL" if v is None else str(v) for v in r))
             if result.row_count > 10:
                 print(f"... ({result.row_count - 10} more rows)")
+    if result.chart:
+        import json as _json
+        print("\n─── Chart spec ────────────────────────────────────")
+        print(_json.dumps(result.chart, ensure_ascii=False, indent=2))
     print("\n─── Answer ────────────────────────────────────────")
     print(result.answer)
 

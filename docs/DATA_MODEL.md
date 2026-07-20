@@ -160,3 +160,19 @@ under_repair/stolen/lost — the "state register" described by the IT team) and
 - Constraint battery: no-scope tender, validated-BoQ-without-date,
   out-of-range TBE score, paid-without-date → all correctly rejected.
 - `agent_reader` privilege battery re-passed (read OK, writes denied).
+
+---
+
+## v2.1 addendum — FX dimension (`erp.fx_rates`)
+
+Motivated by a live agent failure: the question *"which projects have
+procurement spend exceeding their contract value?"* is unanswerable without
+currency conversion (contracts in USD/EUR, purchase orders in supplier
+currencies), and the agent's defensive workaround silently excluded exactly
+the multi-currency projects the question targets. `erp.fx_rates` provides
+indicative average rates to TND (`amount * rate_to_tnd`); the generator
+populates it with the same rates used internally for budget coherence, and
+the validation suite now performs its TND normalization through this table —
+i.e. through the same path the agent uses. Simplification #3 (no FX table)
+is superseded; rates remain period-average constants rather than a daily
+series (documented).

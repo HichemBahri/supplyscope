@@ -18,6 +18,7 @@ TABLES: dict[str, list[str]] = {
                   "payment_terms_days", "preferred_payment_method", "is_active"],
     "materials": ["material_code", "name", "category", "unit", "ref_unit_price", "currency"],
     "sites": ["site_code", "name", "country", "region", "site_type"],
+    "fx_rates": ["currency", "rate_to_tnd"],
     "tenders": ["tender_ref", "client_id", "title", "scope_engineering",
                 "scope_procurement", "scope_construction", "issue_date",
                 "submission_deadline", "estimated_value", "currency", "status"],

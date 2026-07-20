@@ -13,8 +13,13 @@ Rules:
 - One single SELECT (or WITH...SELECT) statement. Never modify data.
 - Always use fully qualified table names: erp.<table>.
 - Prefer explicit JOINs via the foreign keys listed in the schema.
-- Amounts may be in different currencies (currency columns). Never sum across \
-currencies without grouping by currency, unless the question explicitly says so.
+- Amounts may be in different currencies (currency columns). Never sum or \
+compare across currencies directly: either group by currency, or convert to \
+TND by joining erp.fx_rates on the document's currency column \
+(amount * rate_to_tnd). Use the conversion whenever a question needs one total \
+or a cross-currency comparison (e.g. spend vs contract value).
+- Text values in the data are mostly French (countries: 'Tunisie', 'Libye', \
+'Italie'...). Use the exact values listed in the schema, never translations.
 - When comparing promised vs actual delivery, delivered shipments are those \
 with actual_delivery_date IS NOT NULL.
 - Use ORDER BY for rankings and LIMIT for top-N questions.
@@ -66,3 +71,40 @@ FAILURE_ANSWER = (
     "{n} attempts. Last database error: {error}. "
     "Try rephrasing the question or narrowing its scope."
 )
+
+
+CHART_SYSTEM = """You choose the best visualization for a SQL result and \
+output ONLY a JSON object (inside a ```json fence) matching one of these \
+specifications:
+
+- {"chart_type":"kpi","title":str,"value_field":str,"unit":str|null} \
+— single row, one headline number.
+- {"chart_type":"bar","title":str,"x_field":str,"y_fields":[str,...],\
+"orientation":"v"|"h","stacked":bool} — categories vs numeric value(s); \
+use "h" when category labels are long; stacked for part-of-whole per category.
+- {"chart_type":"line","title":str,"x_field":str,"y_fields":[str,...]} \
+— evolution over time/ordered axis.
+- {"chart_type":"pie","title":str,"label_field":str,"value_field":str} \
+— share of a whole, at most ~8 slices.
+- {"chart_type":"scatter","title":str,"x_field":str,"y_field":str,\
+"color_field":str|null} — relation between two numeric measures.
+- {"chart_type":"table","title":str} — fallback when no chart adds value.
+
+Rules:
+- Field names MUST be chosen from the result columns exactly as given.
+- Title: short, business-oriented, in the language of the question.
+- Output the JSON only. No commentary."""
+
+CHART_USER = """Question: {question}
+
+Result columns: {columns}
+First rows:
+{sample_rows}
+
+Choose the specification."""
+
+CHART_FIX_USER = """Your previous specification was rejected:
+{error}
+
+Return a corrected JSON specification (```json fence), using only the listed \
+result columns."""
