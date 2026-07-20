@@ -33,3 +33,6 @@ test-all:        ## Run all backend tests (needs the seeded docker DB up)
 
 ask:             ## Ask the agent from repo root: make ask q="..." [tier=smart]
 	set -a && . ./.env && set +a && cd backend && uv run python -m scripts.ask "$(q)" --tier $${tier:-fast}
+
+api:             ## Run the FastAPI backend in dev mode (http://localhost:8000)
+	set -a && . ./.env && set +a && cd backend && uv run uvicorn app.main:app --reload --port 8000

@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     agent_db_user: str = "agent_reader"
     agent_db_password: str = "agent_reader_dev_only"   # dev default; override in prod
 
+    # --- Auth --------------------------------------------------------------
+    jwt_secret: str = "dev_only_change_me"
+    jwt_expiry_hours: int = 24
+
     # --- Agent guardrails --------------------------------------------------
     agent_sql_timeout_ms: int = 8000
     agent_max_rows: int = 500
