@@ -119,3 +119,38 @@ def list_messages(conversation_id: int) -> list[dict]:
             "SELECT message_id, role, content, sql_query, chart, result_meta, created_at "
             "FROM app.messages WHERE conversation_id = %s ORDER BY message_id",
             (conversation_id,)).fetchall()
+
+# ------------------------------------------------------------- saved charts
+
+def create_saved_chart(user_id: int, title: str, sql_query: str,
+                       chart_spec: dict) -> dict:
+    with _conn() as c:
+        return c.execute(
+            "INSERT INTO app.saved_charts (user_id, title, sql_query, chart_spec) "
+            "VALUES (%s, %s, %s, %s) "
+            "RETURNING chart_id, title, sql_query, chart_spec, created_at, updated_at",
+            (user_id, title, sql_query, _jsonb(chart_spec))).fetchone()
+
+
+def list_saved_charts(user_id: int) -> list[dict]:
+    with _conn() as c:
+        return c.execute(
+            "SELECT chart_id, title, sql_query, chart_spec, created_at, updated_at "
+            "FROM app.saved_charts WHERE user_id = %s ORDER BY chart_id",
+            (user_id,)).fetchall()
+
+
+def get_saved_chart(chart_id: int, user_id: int) -> dict | None:
+    with _conn() as c:
+        return c.execute(
+            "SELECT chart_id, user_id, title, sql_query, chart_spec "
+            "FROM app.saved_charts WHERE chart_id = %s AND user_id = %s",
+            (chart_id, user_id)).fetchone()
+
+
+def delete_saved_chart(chart_id: int, user_id: int) -> bool:
+    with _conn() as c:
+        cur = c.execute(
+            "DELETE FROM app.saved_charts WHERE chart_id = %s AND user_id = %s",
+            (chart_id, user_id))
+        return cur.rowcount == 1

@@ -21,6 +21,30 @@ services:
       timeout: 3s
       retries: 10
 
+  backend:
+    build: ./backend
+    container_name: supplyscope-backend
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: postgres          # inside the compose network
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-supplyscope}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      AGENT_DB_USER: ${AGENT_DB_USER:-agent_reader}
+      AGENT_DB_PASSWORD: ${AGENT_DB_PASSWORD:-agent_reader_dev_only}
+      JWT_SECRET: ${JWT_SECRET:?set it in .env}
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      LLM_MODEL_FAST: ${LLM_MODEL_FAST:-claude-haiku-4-5}
+      LLM_MODEL_SMART: ${LLM_MODEL_SMART:-claude-sonnet-4-6}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   adminer:
     image: adminer:4
     container_name: supplyscope-adminer

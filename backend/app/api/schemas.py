@@ -56,3 +56,28 @@ class ConversationOut(BaseModel):
     title: str
     created_at: dt.datetime
     updated_at: dt.datetime
+
+
+class SaveChartRequest(BaseModel):
+    title: str = Field(min_length=3, max_length=120)
+    sql_query: str = Field(min_length=8, max_length=8000)
+    chart_spec: dict
+
+
+class SavedChartOut(BaseModel):
+    chart_id: int
+    title: str
+    sql_query: str
+    chart_spec: dict
+    created_at: dt.datetime
+    updated_at: dt.datetime
+
+
+class ChartDataOut(BaseModel):
+    chart_id: int
+    chart_spec: dict
+    columns: list[str]
+    rows: list[list[Any]]
+    row_count: int
+    truncated: bool
+    duration_ms: float

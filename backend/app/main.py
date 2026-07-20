@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import routes_auth, routes_chat
+from app.api import routes_auth, routes_charts, routes_chat
 
 
 def create_app() -> FastAPI:
@@ -19,6 +19,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(routes_auth.router)
     app.include_router(routes_chat.router)
+    app.include_router(routes_charts.router)
 
     @app.get("/api/health", tags=["ops"])
     def health() -> dict:
