@@ -39,3 +39,6 @@ api:             ## Run the FastAPI backend in dev mode (http://localhost:8000)
 
 simulate:        ## Live ERP feed for the reactive demo: make simulate [interval=5]
 	set -a && . ./.env && set +a && cd backend && uv run python -m scripts.simulate_activity --interval $${interval:-5}
+
+front:           ## Run the React frontend in dev mode (http://localhost:5173)
+	cd frontend && npm run dev
