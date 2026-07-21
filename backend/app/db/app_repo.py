@@ -154,3 +154,10 @@ def delete_saved_chart(chart_id: int, user_id: int) -> bool:
             "DELETE FROM app.saved_charts WHERE chart_id = %s AND user_id = %s",
             (chart_id, user_id))
         return cur.rowcount == 1
+
+def list_all_saved_charts() -> list[dict]:
+    """All users' saved charts (reactivity engine index; not exposed via API)."""
+    with _conn() as c:
+        return c.execute(
+            "SELECT chart_id, user_id, title, sql_query, chart_spec "
+            "FROM app.saved_charts ORDER BY chart_id").fetchall()
