@@ -7,10 +7,28 @@ from typing import Any
 from pydantic import BaseModel, EmailStr, Field
 
 
+DEPARTMENTS = ("Supply Chain", "Tendering", "Engineering",
+               "Finance", "IT", "Management")
+
+
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    display_name: str = Field(min_length=1, max_length=80)
+    first_name: str = Field(min_length=1, max_length=60)
+    last_name: str = Field(min_length=1, max_length=60)
+    job_title: str = Field(min_length=2, max_length=80)
+    department: str = "Supply Chain"
+
+
+class ProfileUpdate(BaseModel):
+    first_name: str | None = Field(default=None, min_length=1, max_length=60)
+    last_name: str | None = Field(default=None, min_length=1, max_length=60)
+    job_title: str | None = Field(default=None, min_length=2, max_length=80)
+    department: str | None = None
+
+
+class AdminUserUpdate(ProfileUpdate):
+    role: str | None = Field(default=None, pattern="^(admin|analyst)$")
 
 
 class LoginRequest(BaseModel):
@@ -26,7 +44,13 @@ class TokenResponse(BaseModel):
 class UserOut(BaseModel):
     user_id: int
     email: str
-    display_name: str
+    first_name: str
+    last_name: str
+    job_title: str
+    department: str
+    role: str
+    has_avatar: bool
+    created_at: dt.datetime
 
 
 class ChatRequest(BaseModel):

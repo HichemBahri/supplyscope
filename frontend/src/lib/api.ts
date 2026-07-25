@@ -41,8 +41,29 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  register: (email: string, password: string, display_name: string) =>
-    request("/api/auth/register", { method: "POST", body: JSON.stringify({ email, password, display_name }) }),
+  register: (body: {
+    email: string; password: string; first_name: string; last_name: string;
+    job_title: string; department: string;
+  }) => request("/api/auth/register", { method: "POST", body: JSON.stringify(body) }),
+  me: () => request<import("./types").User>("/api/me"),
+  updateMe: (body: Partial<Pick<import("./types").User,
+    "first_name" | "last_name" | "job_title" | "department">>) =>
+    request<import("./types").User>("/api/me", { method: "PATCH", body: JSON.stringify(body) }),
+  uploadAvatar: async (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch("/api/me/avatar", {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: form,
+    });
+    if (!res.ok) throw new ApiError(res.status, (await res.json()).detail ?? "Upload failed");
+  },
+  adminUsers: () => request<import("./types").User[]>("/api/admin/users"),
+  adminUpdateUser: (id: number, body: object) =>
+    request<import("./types").User>(`/api/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  adminDeleteUser: (id: number) =>
+    request<void>(`/api/admin/users/${id}`, { method: "DELETE" }),
   login: (email: string, password: string) =>
     request<{ access_token: string }>("/api/auth/login", {
       method: "POST", body: JSON.stringify({ email, password }),

@@ -69,3 +69,19 @@ export interface ChatTurn {
   user_message: Message;
   assistant_message: Message;
 }
+
+export interface User {
+  user_id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  job_title: string;
+  department: string;
+  role: "admin" | "analyst";
+  has_avatar: boolean;
+  created_at: string;
+}
+
+export const DEPARTMENTS = [
+  "Supply Chain", "Tendering", "Engineering", "Finance", "IT", "Management",
+] as const;

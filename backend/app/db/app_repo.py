@@ -45,12 +45,24 @@ def _conn() -> psycopg.Connection:
 
 # ------------------------------------------------------------------- users
 
-def create_user(email: str, password_hash: str, display_name: str) -> dict:
+_USER_COLS = ("user_id, email, first_name, last_name, job_title, department, "
+              "role, (avatar IS NOT NULL) AS has_avatar, created_at")
+
+
+def count_users() -> int:
+    with _conn() as c:
+        return c.execute("SELECT count(*) FROM app.users").fetchone()["count"]
+
+
+def create_user(email: str, password_hash: str, first_name: str, last_name: str,
+                job_title: str, department: str, role: str) -> dict:
     with _conn() as c:
         return c.execute(
-            "INSERT INTO app.users (email, password_hash, display_name) "
-            "VALUES (%s, %s, %s) RETURNING user_id, email, display_name, created_at",
-            (email, password_hash, display_name)).fetchone()
+            "INSERT INTO app.users (email, password_hash, first_name, last_name,"
+            " job_title, department, role) VALUES (%s, %s, %s, %s, %s, %s, %s) "
+            f"RETURNING {_USER_COLS}",
+            (email, password_hash, first_name, last_name, job_title,
+             department, role)).fetchone()
 
 
 def get_user_by_email(email: str) -> dict | None:
@@ -62,8 +74,54 @@ def get_user_by_email(email: str) -> dict | None:
 def get_user(user_id: int) -> dict | None:
     with _conn() as c:
         return c.execute(
-            "SELECT user_id, email, display_name FROM app.users WHERE user_id = %s",
+            f"SELECT {_USER_COLS} FROM app.users WHERE user_id = %s",
             (user_id,)).fetchone()
+
+
+def list_users() -> list[dict]:
+    with _conn() as c:
+        return c.execute(
+            f"SELECT {_USER_COLS} FROM app.users ORDER BY user_id").fetchall()
+
+
+def update_user(user_id: int, fields: dict) -> dict | None:
+    """Update a whitelisted subset of user fields; returns the updated row."""
+    allowed = {"first_name", "last_name", "job_title", "department", "role"}
+    updates = {k: v for k, v in fields.items() if k in allowed and v is not None}
+    if not updates:
+        return get_user(user_id)
+    sets = ", ".join(f"{k} = %s" for k in updates)
+    with _conn() as c:
+        return c.execute(
+            f"UPDATE app.users SET {sets} WHERE user_id = %s RETURNING {_USER_COLS}",
+            (*updates.values(), user_id)).fetchone()
+
+
+def delete_user(user_id: int) -> bool:
+    with _conn() as c:
+        return c.execute("DELETE FROM app.users WHERE user_id = %s",
+                         (user_id,)).rowcount == 1
+
+
+def count_admins(excluding: int | None = None) -> int:
+    with _conn() as c:
+        return c.execute(
+            "SELECT count(*) FROM app.users WHERE role = 'admin' "
+            "AND (%s::int IS NULL OR user_id <> %s)",
+            (excluding, excluding)).fetchone()["count"]
+
+
+def set_avatar(user_id: int, data: bytes, mime: str) -> None:
+    with _conn() as c:
+        c.execute("UPDATE app.users SET avatar = %s, avatar_mime = %s "
+                  "WHERE user_id = %s", (data, mime, user_id))
+
+
+def get_avatar(user_id: int) -> dict | None:
+    with _conn() as c:
+        return c.execute("SELECT avatar, avatar_mime FROM app.users "
+                         "WHERE user_id = %s AND avatar IS NOT NULL",
+                         (user_id,)).fetchone()
 
 
 # ----------------------------------------------------------- conversations

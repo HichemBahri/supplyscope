@@ -47,9 +47,9 @@ export function MessageBubble({ message, onPin }: Props) {
           {meta && (
             <span className="eyebrow">
               {meta.failed
-                ? `échec après ${meta.attempts.length} tentative(s)`
-                : `${meta.row_count} ligne${meta.row_count > 1 ? "s" : ""} · ${meta.duration_ms} ms` +
-                  (meta.attempts.length ? ` · auto-corrigé ×${meta.attempts.length}` : "")}
+                ? `failed after ${meta.attempts.length} attempt(s)`
+                : `${meta.row_count} row${meta.row_count > 1 ? "s" : ""} · ${meta.duration_ms} ms` +
+                  (meta.attempts.length ? ` · self-corrected ×${meta.attempts.length}` : "")}
             </span>
           )}
           {message.sql_query && (
@@ -64,13 +64,13 @@ export function MessageBubble({ message, onPin }: Props) {
           )}
           {meta?.attempts.length ? (
             <span className="flex items-center gap-1 text-[13px] text-ink-muted">
-              <RotateCcw className="size-3.5" /> auto-correction
+              <RotateCcw className="size-3.5" /> self-correction
             </span>
           ) : null}
           {hasChart && onPin && (
             <Button variant="ghost" className="ml-auto !px-2.5 !py-1 text-[13px]"
                     onClick={() => onPin(message)}>
-              <Pin className="size-3.5" /> Épingler au tableau de bord
+              <Pin className="size-3.5" /> Pin to dashboard
             </Button>
           )}
         </div>

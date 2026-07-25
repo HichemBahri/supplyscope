@@ -114,8 +114,8 @@ function Kpi({ spec, columns, rows }: { spec: ChartSpec; columns: string[]; rows
   }, [target]);
 
   const formatted = Number.isInteger(target)
-    ? Math.round(display).toLocaleString("fr-FR")
-    : display.toLocaleString("fr-FR", { maximumFractionDigits: 2 });
+    ? Math.round(display).toLocaleString("en-US")
+    : display.toLocaleString("en-US", { maximumFractionDigits: 2 });
 
   return (
     <div className="flex flex-col items-start gap-1 py-6">

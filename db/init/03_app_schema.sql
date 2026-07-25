@@ -8,10 +8,18 @@ CREATE TABLE app.users (
     user_id       integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     email         text NOT NULL UNIQUE,
     password_hash text NOT NULL,
-    display_name  text NOT NULL,
+    first_name    text NOT NULL,
+    last_name     text NOT NULL,
+    job_title     text NOT NULL,
+    department    text NOT NULL DEFAULT 'Supply Chain' CHECK (department IN
+                   ('Supply Chain','Tendering','Engineering','Finance','IT','Management')),
+    role          text NOT NULL DEFAULT 'analyst' CHECK (role IN ('admin','analyst')),
+    avatar        bytea,
+    avatar_mime   text,
     created_at    timestamptz NOT NULL DEFAULT now()
 );
-COMMENT ON TABLE app.users IS 'Application accounts (business users of the assistant).';
+COMMENT ON TABLE app.users IS
+  'Employee accounts. The first registered user becomes admin (bootstrap); admins manage all accounts. Avatar stored inline (<=2MB) with its MIME type.';
 
 CREATE TABLE app.conversations (
     conversation_id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

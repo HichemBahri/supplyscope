@@ -68,21 +68,21 @@ export default function Dashboard() {
     <div className="flex h-screen flex-1 flex-col overflow-hidden">
       {/* telemetry strip — the signature */}
       <div className="flex items-center gap-4 border-b border-line bg-card px-6 py-3">
-        <h1 className="font-display text-lg font-bold text-navy-900">Tableau de bord</h1>
+        <h1 className="font-display text-lg font-bold text-navy-900">Dashboard</h1>
         <div className="ml-auto flex items-center gap-2.5">
           {status === "live" ? (
             <>
               <span className="pulse-dot" aria-hidden />
-              <span className="eyebrow !text-signal">flux temps réel actif</span>
+              <span className="eyebrow !text-signal">live stream active</span>
             </>
           ) : status === "connecting" ? (
-            <span className="eyebrow">connexion au flux…</span>
+            <span className="eyebrow">connecting to stream…</span>
           ) : (
-            <span className="eyebrow !text-danger">flux interrompu — reconnexion…</span>
+            <span className="eyebrow !text-danger">stream lost — reconnecting…</span>
           )}
           {lastTables.length > 0 && (
             <span className="eyebrow hidden sm:inline">
-              · dernier changement : {lastTables.join(", ")}
+              · last change: {lastTables.join(", ")}
             </span>
           )}
         </div>
@@ -93,10 +93,10 @@ export default function Dashboard() {
           <div className="grid h-40 place-items-center"><Spinner className="size-6" /></div>
         ) : list.length === 0 ? (
           <div className="mt-20 text-center">
-            <h2 className="font-display text-xl font-bold text-navy-900">Aucun graphique épinglé</h2>
+            <h2 className="font-display text-xl font-bold text-navy-900">No pinned charts yet</h2>
             <p className="mx-auto mt-2 max-w-md text-sm text-ink-muted">
-              Depuis l'Assistant, épinglez un graphique : il apparaîtra ici et se
-              mettra à jour tout seul quand les données de l'ERP changeront.
+              Pin a chart from the Assistant: it will appear here and refresh itself
+              whenever the ERP data changes.
             </p>
           </div>
         ) : (
@@ -108,16 +108,16 @@ export default function Dashboard() {
                   <div>
                     <h3 className="font-display text-[15px] font-bold text-navy-900">{chart.title}</h3>
                     <div className="eyebrow mt-0.5">
-                      {data ? `${data.row_count} ligne${data.row_count > 1 ? "s" : ""}` : "chargement"}
+                      {data ? `${data.row_count} row${data.row_count > 1 ? "s" : ""}` : "loading"}
                       {refreshedAt && (
                         <span className="text-signal">
-                          {" "}· actualisé {new Date(refreshedAt).toLocaleTimeString("fr-FR")}
+                          {" "}· refreshed {new Date(refreshedAt).toLocaleTimeString("en-GB")}
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="flex gap-1">
-                    <button title="Actualiser"
+                    <button title="Refresh"
                             onClick={async () => {
                               const d = await api.chartData(chart.chart_id);
                               setSlots((s) => ({ ...s, [chart.chart_id]: { ...s[chart.chart_id], data: d } }));
@@ -125,7 +125,7 @@ export default function Dashboard() {
                             className="rounded p-1.5 text-ink-muted hover:bg-line/60 hover:text-ink">
                       <RefreshCw className="size-4" />
                     </button>
-                    <button title="Retirer" onClick={() => remove(chart.chart_id)}
+                    <button title="Remove" onClick={() => remove(chart.chart_id)}
                             className="rounded p-1.5 text-ink-muted hover:bg-danger/10 hover:text-danger">
                       <Trash2 className="size-4" />
                     </button>

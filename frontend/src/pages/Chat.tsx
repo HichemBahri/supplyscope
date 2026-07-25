@@ -9,10 +9,10 @@ import { Button } from "../components/ui/Button";
 import { Spinner } from "../components/ui/Spinner";
 
 const SUGGESTIONS = [
-  "Quel fournisseur a le pire taux de livraison à temps ?",
-  "Évolution mensuelle des dépenses d'achat en 2025, converties en TND",
-  "Quels projets dépassent leur valeur contractuelle (en TND) ?",
-  "Délai moyen de dédouanement vers la Libye par trimestre",
+  "Which supplier has the worst on-time delivery rate?",
+  "Monthly procurement spend in 2025, converted to TND",
+  "Which projects exceed their contract value (in TND)?",
+  "Average customs clearance time to Libya by quarter",
 ];
 
 export default function Chat() {
@@ -48,7 +48,7 @@ export default function Chat() {
       api.conversations().then(setConversations).catch(() => {});
     } catch (e) {
       setMessages((m) => m.slice(0, -1));
-      setError(e instanceof ApiError ? e.message : "L'agent est injoignable — vérifiez le serveur.");
+      setError(e instanceof ApiError ? e.message : "The agent is unreachable — check the server.");
     } finally {
       setBusy(false);
     }
@@ -63,7 +63,7 @@ export default function Chat() {
         <div className="p-3">
           <Button variant="ghost" className="w-full justify-center"
                   onClick={() => setActiveId(null)}>
-            <Plus className="size-4" /> Nouvelle analyse
+            <Plus className="size-4" /> New analysis
           </Button>
         </div>
         <div className="flex-1 overflow-y-auto px-2 pb-3">
@@ -91,11 +91,11 @@ export default function Chat() {
             {messages.length === 0 && !busy && (
               <div className="mt-16 text-center">
                 <h2 className="font-display text-2xl font-bold text-navy-900">
-                  Interrogez vos données d'exploitation
+                  Ask your operational data
                 </h2>
                 <p className="mx-auto mt-2 max-w-md text-sm text-ink-muted">
-                  Posez une question en langage naturel — l'agent écrit la requête,
-                  l'exécute en lecture seule et choisit la visualisation.
+                  Ask a question in plain language — the agent writes the query,
+                  runs it read-only and picks the right visualization.
                 </p>
                 <div className="mx-auto mt-6 grid max-w-xl gap-2 sm:grid-cols-2">
                   {SUGGESTIONS.map((s) => (
@@ -113,7 +113,7 @@ export default function Chat() {
             {busy && (
               <div className="flex items-center gap-3 text-sm text-ink-muted">
                 <Spinner className="size-4" />
-                L'agent interroge la base…
+                The agent is querying the database…
               </div>
             )}
             {error && <p className="text-sm text-danger">{error}</p>}
@@ -125,7 +125,7 @@ export default function Chat() {
             <input
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Ex. : dépenses par catégorie de matériaux ce trimestre…"
+              placeholder="e.g. spend by material category this quarter…"
               className="flex-1 rounded-md border border-line bg-canvas px-4 py-2.5 text-sm focus:border-action focus:outline-none focus:ring-2 focus:ring-action/20"
             />
             <Button disabled={busy || !question.trim()} className="!px-3">
@@ -138,7 +138,7 @@ export default function Chat() {
       <SaveChartDialog
         message={pinTarget}
         onClose={() => setPinTarget(null)}
-        onSaved={() => { setToast("Graphique épinglé — il vivra sur le tableau de bord."); setTimeout(() => setToast(""), 3500); }}
+        onSaved={() => { setToast("Chart pinned — it will live on the dashboard."); setTimeout(() => setToast(""), 3500); }}
       />
       {toast && (
         <div className="fixed bottom-5 left-1/2 -translate-x-1/2 rounded-md bg-navy-900 px-4 py-2.5 text-sm text-white shadow-lg">

@@ -44,7 +44,7 @@ def client() -> TestClient:
 def token(client: TestClient) -> str:
     email = f"test-{uuid.uuid4().hex[:10]}@example.com"
     r = client.post("/api/auth/register", json={
-        "email": email, "password": "s3cure-pass!", "display_name": "Testeur"})
+        "email": email, "password": "s3cure-pass!", "first_name": "Test", "last_name": "User", "job_title": "Engineer", "department": "IT"})
     assert r.status_code == 201, r.text
     r = client.post("/api/auth/login", json={"email": email, "password": "s3cure-pass!"})
     assert r.status_code == 200, r.text
@@ -66,7 +66,8 @@ def test_register_login_and_auth_guard(client, token):
 
 def test_duplicate_email_conflict(client):
     body = {"email": "dup@example.com", "password": "s3cure-pass!",
-            "display_name": "Dup"}
+            "first_name": "Dup", "last_name": "User",
+            "job_title": "Analyst", "department": "IT"}
     client.post("/api/auth/register", json=body)
     assert client.post("/api/auth/register", json=body).status_code == 409
 
@@ -137,7 +138,7 @@ def test_conversation_ownership_enforced(client, token):
     # second user cannot read or write into it
     email = f"intruder-{uuid.uuid4().hex[:8]}@example.com"
     client.post("/api/auth/register", json={
-        "email": email, "password": "s3cure-pass!", "display_name": "Intrus"})
+        "email": email, "password": "s3cure-pass!", "first_name": "Test", "last_name": "User", "job_title": "Engineer", "department": "IT"})
     tok2 = client.post("/api/auth/login", json={
         "email": email, "password": "s3cure-pass!"}).json()["access_token"]
     assert client.get(f"/api/conversations/{conv_id}/messages",

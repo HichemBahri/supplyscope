@@ -20,7 +20,7 @@ def client() -> TestClient:
 def token(client: TestClient) -> str:
     email = f"charts-{uuid.uuid4().hex[:10]}@example.com"
     client.post("/api/auth/register", json={
-        "email": email, "password": "s3cure-pass!", "display_name": "Chartiste"})
+        "email": email, "password": "s3cure-pass!", "first_name": "Test", "last_name": "User", "job_title": "Engineer", "department": "IT"})
     return client.post("/api/auth/login", json={
         "email": email, "password": "s3cure-pass!"}).json()["access_token"]
 
@@ -75,7 +75,7 @@ def test_charts_are_private(client, token):
                            json=GOOD).json()["chart_id"]
     email = f"other-{uuid.uuid4().hex[:8]}@example.com"
     client.post("/api/auth/register", json={
-        "email": email, "password": "s3cure-pass!", "display_name": "Autre"})
+        "email": email, "password": "s3cure-pass!", "first_name": "Test", "last_name": "User", "job_title": "Engineer", "department": "IT"})
     tok2 = client.post("/api/auth/login", json={
         "email": email, "password": "s3cure-pass!"}).json()["access_token"]
     assert client.get(f"/api/charts/{chart_id}/data",

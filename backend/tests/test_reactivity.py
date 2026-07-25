@@ -29,7 +29,8 @@ def _admin() -> psycopg.Connection:
 
 def _mk_user() -> int:
     return app_repo.create_user(
-        f"react-{uuid.uuid4().hex[:10]}@example.com", "x", "React")["user_id"]
+        f"react-{uuid.uuid4().hex[:10]}@example.com", "x", "React", "User",
+        "Analyst", "IT", "analyst")["user_id"]
 
 
 def _mk_chart(user_id: int) -> dict:
@@ -135,8 +136,9 @@ def test_save_chart_reindexes_from_sync_endpoint_with_lifespan():
 
     with TestClient(create_app()) as client:      # with-block => lifespan runs
         email = f"lifespan-{uuid.uuid4().hex[:8]}@example.com"
-        client.post("/api/auth/register", json={
-            "email": email, "password": "s3cure-pass!", "display_name": "L"})
+        client.post("/api/auth/register", json={"email": email, "password": "s3cure-pass!", "first_name": "Test",
+        "last_name": "User", "job_title": "Procurement Engineer",
+        "department": "Supply Chain"})
         tok = client.post("/api/auth/login", json={
             "email": email, "password": "s3cure-pass!"}).json()["access_token"]
         r = client.post("/api/charts", headers={"Authorization": f"Bearer {tok}"},

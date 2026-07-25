@@ -6,7 +6,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import routes_auth, routes_charts, routes_chat, routes_stream
+from app.api import (routes_admin, routes_auth, routes_charts, routes_chat,
+                     routes_stream, routes_users)
 from app.reactivity.engine import ReactivityEngine
 
 
@@ -36,6 +37,8 @@ def create_app() -> FastAPI:
     app.include_router(routes_chat.router)
     app.include_router(routes_charts.router)
     app.include_router(routes_stream.router)
+    app.include_router(routes_users.router)
+    app.include_router(routes_admin.router)
 
     @app.get("/api/health", tags=["ops"])
     def health() -> dict:
