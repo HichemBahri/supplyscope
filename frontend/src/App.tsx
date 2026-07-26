@@ -5,7 +5,8 @@ import { Sidebar } from "./components/Sidebar";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Chat from "./pages/Chat";
-import Dashboard from "./pages/Dashboard";
+import Dashboards from "./pages/Dashboards";
+import DashboardDetail from "./pages/DashboardDetail";
 import Profile from "./pages/Profile";
 import Team from "./pages/Team";
 
@@ -35,7 +36,8 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route element={<Protected />}>
             <Route path="/chat" element={<Chat />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboards />} />
+            <Route path="/dashboard/:id" element={<DashboardDetail />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/team" element={<AdminOnly><Team /></AdminOnly>} />
           </Route>

@@ -56,3 +56,36 @@ CREATE TABLE app.saved_charts (
 CREATE INDEX idx_saved_charts_user ON app.saved_charts(user_id);
 COMMENT ON TABLE app.saved_charts IS
   'Pinned visualizations = (sql_query, chart_spec) pairs. The Phase-4 reactivity engine re-executes sql_query on data changes and pushes fresh rows to subscribed clients.';
+
+-- ---------------------------------------------------------------------------
+-- Phase 6.2 — collaborative dashboards
+-- ---------------------------------------------------------------------------
+CREATE TABLE app.dashboards (
+    dashboard_id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    owner_id     integer NOT NULL REFERENCES app.users(user_id) ON DELETE CASCADE,
+    title        text NOT NULL,
+    description  text,
+    is_shared    boolean NOT NULL DEFAULT false,
+    created_at   timestamptz NOT NULL DEFAULT now(),
+    updated_at   timestamptz NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE app.dashboards IS
+  'Named collections of saved charts. is_shared=true (admin action) publishes the dashboard read-only to every employee; everyone may comment on it.';
+CREATE INDEX idx_dashboards_owner ON app.dashboards(owner_id);
+CREATE INDEX idx_dashboards_shared ON app.dashboards(is_shared) WHERE is_shared;
+
+CREATE TABLE app.dashboard_charts (
+    dashboard_id integer NOT NULL REFERENCES app.dashboards(dashboard_id) ON DELETE CASCADE,
+    chart_id     integer NOT NULL REFERENCES app.saved_charts(chart_id) ON DELETE CASCADE,
+    position     integer NOT NULL DEFAULT 0,
+    PRIMARY KEY (dashboard_id, chart_id)
+);
+
+CREATE TABLE app.dashboard_comments (
+    comment_id   integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    dashboard_id integer NOT NULL REFERENCES app.dashboards(dashboard_id) ON DELETE CASCADE,
+    user_id      integer NOT NULL REFERENCES app.users(user_id) ON DELETE CASCADE,
+    content      text NOT NULL CHECK (length(content) BETWEEN 1 AND 2000),
+    created_at   timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_comments_dashboard ON app.dashboard_comments(dashboard_id, comment_id);

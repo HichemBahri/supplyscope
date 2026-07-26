@@ -40,9 +40,9 @@ async def chart_stream(request: Request, token: str) -> StreamingResponse:
                 if await request.is_disconnected():
                     return
                 try:
-                    payload = await asyncio.wait_for(
+                    item = await asyncio.wait_for(
                         queue.get(), timeout=KEEPALIVE_SECONDS)
-                    yield f"event: chart_update\ndata: {payload}\n\n"
+                    yield f"event: {item['event']}\ndata: {item['data']}\n\n"
                 except asyncio.TimeoutError:
                     yield ": keepalive\n\n"
         finally:

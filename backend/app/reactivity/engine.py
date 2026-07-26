@@ -23,6 +23,7 @@ from app.db.app_repo import _dumps  # shared DB-native-types JSON serializer
 from app.db.safe_executor import (
     SQLExecutionError, SQLValidationError, execute_readonly,
 )
+from app.db import app_repo
 from app.reactivity.deps_index import ChartIndex
 
 logger = logging.getLogger("supplyscope.reactivity")
@@ -35,6 +36,7 @@ _PUSH_ROWS = 200
 class ReactivityEngine:
     def __init__(self, debounce: float = DEBOUNCE_SECONDS) -> None:
         self.index = ChartIndex()
+        self._shared_chart_ids: set[int] = set()
         self._debounce = debounce
         self._subscribers: dict[int, set[asyncio.Queue]] = {}
         self._task: asyncio.Task | None = None
@@ -42,7 +44,7 @@ class ReactivityEngine:
 
     # ------------------------------------------------------------ lifecycle
     async def start(self) -> None:
-        await asyncio.to_thread(self.index.rebuild)
+        await asyncio.to_thread(self._rebuild_all)
         self._stopping.clear()
         self._task = asyncio.create_task(self._listen_loop(), name="erp-listener")
         logger.info("reactivity engine started (%d charts indexed)", self.index.size)
@@ -57,6 +59,26 @@ class ReactivityEngine:
                 pass
         logger.info("reactivity engine stopped")
 
+    def _rebuild_all(self) -> None:
+        self.index.rebuild()
+        self._shared_chart_ids = app_repo.shared_chart_ids()
+
+    def broadcast(self, event: str, payload: str,
+                  user_ids: set[int] | None = None) -> None:
+        """Queue an SSE event for the given users (None = every subscriber)."""
+        targets = (self._subscribers.keys() if user_ids is None
+                   else [u for u in user_ids if u in self._subscribers])
+        for uid in list(targets):
+            for q in list(self._subscribers.get(uid, ())):
+                try:
+                    q.put_nowait({"event": event, "data": payload})
+                except asyncio.QueueFull:
+                    logger.warning("subscriber queue full; dropping %s", event)
+
+    def broadcast_comment(self, comment: dict) -> None:
+        """Push a freshly posted comment to every connected employee."""
+        self.broadcast("comment_added", _dumps(comment))
+
     def reindex_soon(self) -> None:
         """Schedule an index rebuild (called after chart save/delete).
 
@@ -65,7 +87,7 @@ class ReactivityEngine:
         plain daemon thread, not loop.run_in_executor. (Bug found live by
         Hichem: RuntimeError 'no running event loop'; regression-tested in
         tests/test_reactivity.py.)"""
-        threading.Thread(target=self.index.rebuild, daemon=True).start()
+        threading.Thread(target=self._rebuild_all, daemon=True).start()
 
     # ---------------------------------------------------------- subscribers
     def subscribe(self, user_id: int) -> asyncio.Queue:
@@ -117,8 +139,10 @@ class ReactivityEngine:
         logger.info("change in %s -> refreshing %d chart(s)",
                     sorted(tables), len(charts))
         for chart in charts:
-            if chart["user_id"] not in self._subscribers:
-                continue   # nobody watching this user's dashboards right now
+            shared = chart["chart_id"] in self._shared_chart_ids
+            audience = None if shared else {chart["user_id"]}
+            if not shared and chart["user_id"] not in self._subscribers:
+                continue   # nobody watching this private chart right now
             try:
                 res = await asyncio.to_thread(
                     execute_readonly, chart["sql_query"], _PUSH_ROWS)
@@ -136,8 +160,4 @@ class ReactivityEngine:
                 "source_tables": sorted(tables),
                 "refreshed_at": dt.datetime.now(dt.UTC).isoformat(),
             })
-            for q in list(self._subscribers.get(chart["user_id"], ())):
-                try:
-                    q.put_nowait(payload)
-                except asyncio.QueueFull:
-                    logger.warning("subscriber queue full; dropping update")
+            self.broadcast("chart_update", payload, audience)

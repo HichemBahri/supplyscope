@@ -87,6 +87,25 @@ def test_index_maps_tables_to_charts():
         app_repo.delete_saved_chart(chart["chart_id"], user_id)
 
 
+
+
+async def _next_update_for(queue, chart_id: int, timeout: float = 8.0):
+    """Drain the broadcast queue until the update for chart_id arrives.
+
+    On a broadcast bus, other listeners' charts may legitimately produce
+    events first (e.g. shared charts from earlier data); asserting on the
+    first event makes tests order-dependent."""
+    import asyncio as _a, json as _j
+    deadline = _a.get_event_loop().time() + timeout
+    while True:
+        remaining = deadline - _a.get_event_loop().time()
+        item = await _a.wait_for(queue.get(), timeout=max(0.1, remaining))
+        if item["event"] != "chart_update":
+            continue
+        data = _j.loads(item["data"])
+        if data["chart_id"] == chart_id:
+            return data
+
 def test_end_to_end_write_to_subscriber_push():
     async def body():
         user_id = _mk_user()
@@ -99,8 +118,7 @@ def test_end_to_end_write_to_subscriber_push():
             queue = engine.subscribe(user_id)
             with _admin() as w:
                 code = _insert_probe_client(w)
-            payload = json.loads(await asyncio.wait_for(queue.get(), timeout=8))
-            assert payload["chart_id"] == chart["chart_id"]
+            payload = await _next_update_for(queue, chart["chart_id"])
             assert payload["columns"] == ["n"]
             assert payload["source_tables"] == ["clients"]
             assert payload["row_count"] == 1

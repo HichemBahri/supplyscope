@@ -96,8 +96,11 @@ def test_admin_crud_and_guards(client):
                      json={"role": "analyst"})
     assert r.status_code == 200
     # self-deletion via admin API refused
-    assert client.delete(f"/api/admin/users/{a['user']['user_id']}",
-                         headers=a["auth"]).status_code == 409
+    r = client.delete(f"/api/admin/users/{a['user']['user_id']}",
+                      headers=a["auth"])
+    assert r.status_code == 409, (
+        f"got {r.status_code}: {r.text} | a={a['user']['user_id']} "
+        f"role={a['user']['role']} | b={b['user']['user_id']}")
     # admin deletes the employee
     assert client.delete(f"/api/admin/users/{b['user']['user_id']}",
                          headers=a["auth"]).status_code == 204

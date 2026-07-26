@@ -11,7 +11,7 @@ export function Sidebar() {
 
   const links = [
     { to: "/chat", label: "Assistant", icon: MessageSquareText },
-    { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { to: "/dashboard", label: "Dashboards", icon: LayoutDashboard },
     ...(user?.role === "admin"
       ? [{ to: "/team", label: "Team", icon: Users }]
       : []),

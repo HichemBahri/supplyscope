@@ -105,3 +105,55 @@ class ChartDataOut(BaseModel):
     row_count: int
     truncated: bool
     duration_ms: float
+
+class DashboardCreate(BaseModel):
+    title: str = Field(min_length=3, max_length=120)
+    description: str | None = Field(default=None, max_length=500)
+
+
+class DashboardUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=3, max_length=120)
+    description: str | None = Field(default=None, max_length=500)
+    is_shared: bool | None = None
+
+
+class DashboardOut(BaseModel):
+    dashboard_id: int
+    owner_id: int
+    title: str
+    description: str | None
+    is_shared: bool
+    owner_first_name: str
+    owner_last_name: str
+    chart_count: int
+    created_at: dt.datetime
+    updated_at: dt.datetime
+
+
+class DashboardChartOut(BaseModel):
+    chart_id: int
+    title: str
+    sql_query: str
+    chart_spec: dict
+    position: int
+
+
+class DashboardDetail(DashboardOut):
+    charts: list[DashboardChartOut]
+    can_edit: bool
+
+
+class CommentCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=2000)
+
+
+class CommentOut(BaseModel):
+    comment_id: int
+    dashboard_id: int
+    user_id: int
+    content: str
+    first_name: str
+    last_name: str
+    job_title: str
+    has_avatar: bool
+    created_at: dt.datetime

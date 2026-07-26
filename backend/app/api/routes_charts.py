@@ -60,6 +60,8 @@ def chart_data(chart_id: int,
     """Re-execute the chart's SQL and return fresh rows (manual refresh —
     the primitive the Phase-4 reactivity engine automates)."""
     chart = app_repo.get_saved_chart(chart_id, user["user_id"])
+    if chart is None and app_repo.chart_is_shared(chart_id):
+        chart = app_repo.get_saved_chart_any(chart_id)   # shared: any employee may view
     if chart is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Chart not found")
     result = _run(chart["sql_query"])

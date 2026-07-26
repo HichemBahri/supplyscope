@@ -85,3 +85,41 @@ export interface User {
 export const DEPARTMENTS = [
   "Supply Chain", "Tendering", "Engineering", "Finance", "IT", "Management",
 ] as const;
+
+export interface DashboardSummary {
+  dashboard_id: number;
+  owner_id: number;
+  title: string;
+  description: string | null;
+  is_shared: boolean;
+  owner_first_name: string;
+  owner_last_name: string;
+  chart_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DashboardChart {
+  chart_id: number;
+  title: string;
+  sql_query: string;
+  chart_spec: ChartSpec;
+  position: number;
+}
+
+export interface DashboardDetail extends DashboardSummary {
+  charts: DashboardChart[];
+  can_edit: boolean;
+}
+
+export interface Comment {
+  comment_id: number;
+  dashboard_id: number;
+  user_id: number;
+  content: string;
+  first_name: string;
+  last_name: string;
+  job_title: string;
+  has_avatar: boolean;
+  created_at: string;
+}

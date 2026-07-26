@@ -64,6 +64,28 @@ export const api = {
     request<import("./types").User>(`/api/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   adminDeleteUser: (id: number) =>
     request<void>(`/api/admin/users/${id}`, { method: "DELETE" }),
+  dashboards: () => request<import("./types").DashboardSummary[]>("/api/dashboards"),
+  createDashboard: (title: string, description?: string) =>
+    request<import("./types").DashboardSummary>("/api/dashboards", {
+      method: "POST", body: JSON.stringify({ title, description }) }),
+  dashboard: (id: number) =>
+    request<import("./types").DashboardDetail>(`/api/dashboards/${id}`),
+  updateDashboard: (id: number, body: object) =>
+    request<import("./types").DashboardSummary>(`/api/dashboards/${id}`, {
+      method: "PATCH", body: JSON.stringify(body) }),
+  deleteDashboard: (id: number) =>
+    request<void>(`/api/dashboards/${id}`, { method: "DELETE" }),
+  addChartToDashboard: (id: number, chartId: number) =>
+    request<void>(`/api/dashboards/${id}/charts/${chartId}`, { method: "POST" }),
+  removeChartFromDashboard: (id: number, chartId: number) =>
+    request<void>(`/api/dashboards/${id}/charts/${chartId}`, { method: "DELETE" }),
+  comments: (id: number) =>
+    request<import("./types").Comment[]>(`/api/dashboards/${id}/comments`),
+  postComment: (id: number, content: string) =>
+    request<import("./types").Comment>(`/api/dashboards/${id}/comments`, {
+      method: "POST", body: JSON.stringify({ content }) }),
+  deleteComment: (commentId: number) =>
+    request<void>(`/api/dashboards/comments/${commentId}`, { method: "DELETE" }),
   login: (email: string, password: string) =>
     request<{ access_token: string }>("/api/auth/login", {
       method: "POST", body: JSON.stringify({ email, password }),

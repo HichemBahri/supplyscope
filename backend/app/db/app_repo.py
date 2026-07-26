@@ -206,6 +206,14 @@ def get_saved_chart(chart_id: int, user_id: int) -> dict | None:
             (chart_id, user_id)).fetchone()
 
 
+def get_saved_chart_any(chart_id: int) -> dict | None:
+    """Fetch a chart regardless of owner (permission checked by caller)."""
+    with _conn() as c:
+        return c.execute(
+            "SELECT chart_id, user_id, title, sql_query, chart_spec "
+            "FROM app.saved_charts WHERE chart_id = %s", (chart_id,)).fetchone()
+
+
 def delete_saved_chart(chart_id: int, user_id: int) -> bool:
     with _conn() as c:
         cur = c.execute(
@@ -219,3 +227,139 @@ def list_all_saved_charts() -> list[dict]:
         return c.execute(
             "SELECT chart_id, user_id, title, sql_query, chart_spec "
             "FROM app.saved_charts ORDER BY chart_id").fetchall()
+
+
+# --------------------------------------------------------------- dashboards
+
+def create_dashboard(owner_id: int, title: str, description: str | None) -> dict:
+    with _conn() as c:
+        return c.execute(
+            "INSERT INTO app.dashboards (owner_id, title, description) "
+            "VALUES (%s, %s, %s) RETURNING dashboard_id, owner_id, title, "
+            "description, is_shared, created_at, updated_at",
+            (owner_id, title, description)).fetchone()
+
+
+def list_dashboards_for(user_id: int) -> list[dict]:
+    """The user's own dashboards plus every shared one, with owner identity."""
+    with _conn() as c:
+        return c.execute(
+            "SELECT d.dashboard_id, d.owner_id, d.title, d.description, "
+            "       d.is_shared, d.created_at, d.updated_at, "
+            "       u.first_name AS owner_first_name, u.last_name AS owner_last_name, "
+            "       (SELECT count(*) FROM app.dashboard_charts dc "
+            "        WHERE dc.dashboard_id = d.dashboard_id) AS chart_count "
+            "FROM app.dashboards d JOIN app.users u ON u.user_id = d.owner_id "
+            "WHERE d.owner_id = %s OR d.is_shared "
+            "ORDER BY d.updated_at DESC", (user_id,)).fetchall()
+
+
+def get_dashboard(dashboard_id: int) -> dict | None:
+    with _conn() as c:
+        return c.execute(
+            "SELECT d.*, u.first_name AS owner_first_name, "
+            "       u.last_name AS owner_last_name "
+            "FROM app.dashboards d JOIN app.users u ON u.user_id = d.owner_id "
+            "WHERE d.dashboard_id = %s", (dashboard_id,)).fetchone()
+
+
+def update_dashboard(dashboard_id: int, fields: dict) -> dict | None:
+    allowed = {"title", "description", "is_shared"}
+    updates = {k: v for k, v in fields.items() if k in allowed and v is not None}
+    if not updates:
+        return get_dashboard(dashboard_id)
+    sets = ", ".join(f"{k} = %s" for k in updates)
+    with _conn() as c:
+        c.execute(f"UPDATE app.dashboards SET {sets}, updated_at = now() "
+                  "WHERE dashboard_id = %s", (*updates.values(), dashboard_id))
+    return get_dashboard(dashboard_id)
+
+
+def delete_dashboard(dashboard_id: int) -> bool:
+    with _conn() as c:
+        return c.execute("DELETE FROM app.dashboards WHERE dashboard_id = %s",
+                         (dashboard_id,)).rowcount == 1
+
+
+def dashboard_charts(dashboard_id: int) -> list[dict]:
+    with _conn() as c:
+        return c.execute(
+            "SELECT sc.chart_id, sc.title, sc.sql_query, sc.chart_spec, dc.position "
+            "FROM app.dashboard_charts dc "
+            "JOIN app.saved_charts sc USING (chart_id) "
+            "WHERE dc.dashboard_id = %s ORDER BY dc.position, sc.chart_id",
+            (dashboard_id,)).fetchall()
+
+
+def add_chart_to_dashboard(dashboard_id: int, chart_id: int) -> None:
+    with _conn() as c:
+        c.execute("INSERT INTO app.dashboard_charts (dashboard_id, chart_id, position) "
+                  "VALUES (%s, %s, (SELECT coalesce(max(position)+1, 0) "
+                  "  FROM app.dashboard_charts WHERE dashboard_id = %s)) "
+                  "ON CONFLICT DO NOTHING", (dashboard_id, chart_id, dashboard_id))
+        c.execute("UPDATE app.dashboards SET updated_at = now() "
+                  "WHERE dashboard_id = %s", (dashboard_id,))
+
+
+def remove_chart_from_dashboard(dashboard_id: int, chart_id: int) -> bool:
+    with _conn() as c:
+        return c.execute(
+            "DELETE FROM app.dashboard_charts "
+            "WHERE dashboard_id = %s AND chart_id = %s",
+            (dashboard_id, chart_id)).rowcount == 1
+
+
+def shared_chart_ids() -> set[int]:
+    """Charts appearing on at least one shared dashboard (live for everyone)."""
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT DISTINCT dc.chart_id FROM app.dashboard_charts dc "
+            "JOIN app.dashboards d USING (dashboard_id) WHERE d.is_shared").fetchall()
+        return {r["chart_id"] for r in rows}
+
+
+def chart_is_shared(chart_id: int) -> bool:
+    with _conn() as c:
+        return c.execute(
+            "SELECT EXISTS (SELECT 1 FROM app.dashboard_charts dc "
+            "JOIN app.dashboards d USING (dashboard_id) "
+            "WHERE d.is_shared AND dc.chart_id = %s)", (chart_id,)
+        ).fetchone()["exists"]
+
+
+# ----------------------------------------------------------------- comments
+
+def add_comment(dashboard_id: int, user_id: int, content: str) -> dict:
+    with _conn() as c:
+        row = c.execute(
+            "INSERT INTO app.dashboard_comments (dashboard_id, user_id, content) "
+            "VALUES (%s, %s, %s) RETURNING comment_id, dashboard_id, user_id, "
+            "content, created_at", (dashboard_id, user_id, content)).fetchone()
+        author = c.execute(
+            "SELECT first_name, last_name, job_title, "
+            "(avatar IS NOT NULL) AS has_avatar FROM app.users WHERE user_id = %s",
+            (user_id,)).fetchone()
+    return {**row, **author}
+
+
+def list_comments(dashboard_id: int) -> list[dict]:
+    with _conn() as c:
+        return c.execute(
+            "SELECT cm.comment_id, cm.dashboard_id, cm.user_id, cm.content, "
+            "       cm.created_at, u.first_name, u.last_name, u.job_title, "
+            "       (u.avatar IS NOT NULL) AS has_avatar "
+            "FROM app.dashboard_comments cm JOIN app.users u USING (user_id) "
+            "WHERE cm.dashboard_id = %s ORDER BY cm.comment_id", (dashboard_id,)).fetchall()
+
+
+def delete_comment(comment_id: int) -> dict | None:
+    with _conn() as c:
+        return c.execute(
+            "DELETE FROM app.dashboard_comments WHERE comment_id = %s "
+            "RETURNING comment_id, dashboard_id, user_id", (comment_id,)).fetchone()
+
+
+def get_comment(comment_id: int) -> dict | None:
+    with _conn() as c:
+        return c.execute("SELECT * FROM app.dashboard_comments "
+                         "WHERE comment_id = %s", (comment_id,)).fetchone()
