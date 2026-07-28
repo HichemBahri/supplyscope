@@ -42,7 +42,9 @@ def test_save_list_refresh_delete_cycle(client, token):
     assert r.status_code == 201, r.text
     chart_id = r.json()["chart_id"]
 
-    charts = client.get("/api/charts", headers=auth(token)).json()
+    resp = client.get("/api/charts", headers=auth(token))
+    assert resp.status_code == 200, resp.text
+    charts = resp.json()
     assert any(c["chart_id"] == chart_id for c in charts)
 
     r = client.get(f"/api/charts/{chart_id}/data", headers=auth(token))

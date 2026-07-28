@@ -56,3 +56,24 @@ FOR EACH STATEMENT EXECUTE FUNCTION erp.notify_data_change();
 CREATE TRIGGER trg_notify_change
 AFTER INSERT OR UPDATE OR DELETE ON ml.models
 FOR EACH STATEMENT EXECUTE FUNCTION erp.notify_data_change();
+
+-- Price-index forecasting (Phase 7.2)
+
+CREATE TABLE IF NOT EXISTS ml.price_forecast (
+    row_id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    category text NOT NULL,
+    month date NOT NULL,
+    price_index numeric(8,4) NOT NULL,
+    kind text NOT NULL CHECK (kind IN ('history','forecast')),
+    model_version integer,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (category, month, kind)
+);
+COMMENT ON TABLE ml.price_forecast IS
+ 'Monthly material price index (median unit_price/ref_unit_price) per category: kind=history are observed values, kind=forecast are model projections for future months. Produced by the price_forecast model.';
+GRANT SELECT ON ml.price_forecast TO agent_reader;
+DO $$ BEGIN
+  CREATE TRIGGER trg_notify_change
+  AFTER INSERT OR UPDATE OR DELETE ON ml.price_forecast
+  FOR EACH STATEMENT EXECUTE FUNCTION erp.notify_data_change();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;

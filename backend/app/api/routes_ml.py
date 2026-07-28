@@ -32,6 +32,33 @@ def predictions(user: dict = Depends(get_current_user)) -> list[dict]:
         ).fetchall()
 
 
+@router.get("/forecast")
+def forecast(category: str | None = None,
+             user: dict = Depends(get_current_user)) -> list[dict]:
+    import psycopg
+    from psycopg.rows import dict_row
+    from app.config import get_settings
+    q = "SELECT category, month, price_index, kind FROM ml.price_forecast"
+    params: tuple = ()
+    if category:
+        q += " WHERE category = %s"
+        params = (category,)
+    q += " ORDER BY category, month"
+    with psycopg.connect(get_settings().app_dsn, row_factory=dict_row) as c:
+        try:
+            return c.execute(q, params).fetchall()
+        except psycopg.errors.UndefinedTable:
+            return []
+
+
+@router.post("/train-forecast")
+def train_forecast_endpoint(user: dict = Depends(require_admin)) -> dict:
+    from app.ml.train_forecast import train_forecast
+    entry = train_forecast(verbose=False)
+    return {"model_name": entry["model_name"], "version": entry["version"],
+            "comparison": entry["comparison"]}
+
+
 @router.post("/train")
 def train_endpoint(user: dict = Depends(require_admin)) -> dict:
     from app.ml.train_risk import train

@@ -46,5 +46,8 @@ front:           ## Run the React frontend in dev mode (http://localhost:5173)
 train:  ## Train the delivery-risk model ladder and activate the winner
 	cd backend && uv run python -m app.ml.train_risk
 
+train-forecast:  ## Backtest the price-index ladder and store 6-month forecasts
+	cd backend && uv run python -m app.ml.train_forecast
+
 score:  ## Score open shipments with the active model (reactive refresh)
 	cd backend && uv run python -m app.ml.scoring
