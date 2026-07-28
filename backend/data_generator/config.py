@@ -139,3 +139,22 @@ STORY_CUSTOMS_CRISIS_END = dt.date(2025, 3, 31)
 STORY_CUSTOMS_CRISIS_FACTOR = 2.5          # Libyan-route clearances x2.5
 
 STORY_OVERBUDGET_TARGET_RATIO = 1.10       # one project spends 110% of contract
+
+
+# --- v2.2: multi-factor late-delivery risk process (logistic) ----------------
+# Lateness was previously a pure per-supplier Bernoulli (single-factor world).
+# ML diagnostics showed situational features carried no signal, so the causal
+# process was enriched: p(late) = sigmoid(logit(1 - supplier_otd) + sum(betas)).
+# Coefficients (log-odds) are design assumptions, documented for the report:
+RISK_INTERCEPT = -1.0            # global calibration: keeps overall late rate realistic (~35-40%)
+RISK_SUPPLIER_WEIGHT = 1.7       # amplifies supplier reliability differences (oracle-audited)
+RISK_BETA_CUSTOMS = 1.3          # any cross-border customs exposure
+RISK_BETA_LIBYA = 0.8            # Libyan destination lanes (fragile corridor)
+RISK_BETA_CRISIS = 2.2           # Q1-2025 customs crisis window (story S3)
+RISK_BETA_LONG_LEAD = 0.9        # promised lead > 60 days (planning drift)
+RISK_BETA_MODE = {"road": 0.0, "sea": 0.8, "air": -1.1, "multimodal": 0.5}
+RISK_BETA_CATEGORY = {           # heavy/structural cargo is harder to expedite
+    "steel": 0.8, "mechanical": 0.4, "electrical": 0.0,
+    "instrumentation": -0.2, "piping": 0.3, "civil": 0.2,
+    "safety": -0.3, "consumables": -0.4,
+}

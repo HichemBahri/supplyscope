@@ -13,13 +13,15 @@ import time
 import psycopg
 
 _SCHEMA = "erp"
+_SCHEMAS = ("erp", "ml")
 
 _TABLES_SQL = """
-SELECT c.relname AS table_name, obj_description(c.oid) AS table_comment
+SELECT n.nspname AS schema_name, c.relname AS table_name,
+       obj_description(c.oid) AS table_comment
 FROM pg_class c
 JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = %s AND c.relkind = 'r'
-ORDER BY c.relname
+WHERE n.nspname = ANY(%s) AND c.relkind = 'r'
+ORDER BY n.nspname, c.relname
 """
 
 _COLUMNS_SQL = """
@@ -31,7 +33,7 @@ SELECT c.relname AS table_name,
 FROM pg_attribute a
 JOIN pg_class c ON c.oid = a.attrelid
 JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = %s AND c.relkind = 'r' AND a.attnum > 0 AND NOT a.attisdropped
+WHERE n.nspname = ANY(%s) AND c.relkind = 'r' AND a.attnum > 0 AND NOT a.attisdropped
 ORDER BY c.relname, a.attnum
 """
 
@@ -44,7 +46,7 @@ FROM pg_constraint ct
 JOIN pg_attribute a  ON a.attrelid = ct.conrelid  AND a.attnum  = ct.conkey[1]
 JOIN pg_attribute fa ON fa.attrelid = ct.confrelid AND fa.attnum = ct.confkey[1]
 JOIN pg_namespace n ON n.oid = ct.connamespace
-WHERE ct.contype = 'f' AND n.nspname = %s
+WHERE ct.contype = 'f' AND n.nspname = ANY(%s)
 ORDER BY 1, 2
 """
 
@@ -53,7 +55,7 @@ SELECT conrelid::regclass::text AS table_name,
        pg_get_constraintdef(ct.oid) AS definition
 FROM pg_constraint ct
 JOIN pg_namespace n ON n.oid = ct.connamespace
-WHERE ct.contype = 'c' AND n.nspname = %s
+WHERE ct.contype = 'c' AND n.nspname = ANY(%s)
   AND pg_get_constraintdef(ct.oid) ILIKE '%%ANY (ARRAY[%%'
 ORDER BY 1
 """
@@ -93,11 +95,12 @@ def _attach_sample_values(cur, tables: dict) -> None:
             if typ != "text" or f"{col} IN (" in enumerated:
                 continue
             cur.execute(
-                f"SELECT count(DISTINCT {col}) FROM {_SCHEMA}.{tname}")
+                f"SELECT count(DISTINCT {col}) "
+                f"FROM {info['schema']}.{tname}")
             n = cur.fetchone()[0]
             if 0 < n <= _MAX_ENUMLIKE_CARDINALITY:
                 cur.execute(
-                    f"SELECT DISTINCT {col} FROM {_SCHEMA}.{tname} "
+                    f"SELECT DISTINCT {col} FROM {info['schema']}.{tname} "
                     f"WHERE {col} IS NOT NULL ORDER BY 1")
                 vals = ", ".join(repr(r[0]) for r in cur.fetchall())
                 info.setdefault("samples", {})[col] = vals
@@ -106,28 +109,30 @@ def _attach_sample_values(cur, tables: dict) -> None:
 def build_schema_doc(dsn: str) -> str:
     """Render the erp schema as a markdown document for LLM consumption."""
     with psycopg.connect(dsn) as conn, conn.cursor() as cur:
-        cur.execute(_TABLES_SQL, (_SCHEMA,))
+        cur.execute(_TABLES_SQL, (list(_SCHEMAS),))
         tables: dict[str, dict] = {
-            name: {"comment": comment, "columns": [], "fks": [], "checks": []}
-            for name, comment in cur.fetchall()
+            name: {"schema": schema, "comment": comment,
+                   "columns": [], "fks": [], "checks": []}
+            for schema, name, comment in cur.fetchall()
         }
-        cur.execute(_COLUMNS_SQL, (_SCHEMA,))
+        cur.execute(_COLUMNS_SQL, (list(_SCHEMAS),))
         for t, col, typ, nullable, comment in cur.fetchall():
             tables[t]["columns"].append((col, typ, nullable, comment))
-        cur.execute(_FKS_SQL, (_SCHEMA,))
+        cur.execute(_FKS_SQL, (list(_SCHEMAS),))
         for t, col, rt, rc in cur.fetchall():
             tables[t.split(".")[-1]]["fks"].append((col, rt, rc))
-        cur.execute(_CHECKS_SQL, (_SCHEMA,))
+        cur.execute(_CHECKS_SQL, (list(_SCHEMAS),))
         for t, definition in cur.fetchall():
             tables[t.split(".")[-1]]["checks"].append(_prettify_check(definition))
         _attach_sample_values(cur, tables)
 
     parts: list[str] = [
-        f"PostgreSQL schema `{_SCHEMA}` — {len(tables)} tables. "
-        "All queries MUST use fully qualified names (erp.<table>).\n"
+        f"PostgreSQL schemas `erp` (operational data) and `ml` "
+        f"(machine-learning outputs) — {len(tables)} tables. All queries "
+        "MUST use fully qualified names (erp.<table> / ml.<table>).\n"
     ]
     for name, info in tables.items():
-        parts.append(f"### erp.{name}")
+        parts.append(f"### {info['schema']}.{name}")
         if info["comment"]:
             parts.append(info["comment"])
         cols = []

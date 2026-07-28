@@ -11,11 +11,11 @@ import threading
 
 from app.db import app_repo
 
-_TABLE_RE = re.compile(r"\berp\.([a-z_]+)")
+_TABLE_RE = re.compile(r"\b(?:erp|ml)\.([a-z_]+)")
 
 
 def extract_tables(sql: str) -> set[str]:
-    """All erp tables referenced by a SQL text."""
+    """All erp/ml tables referenced by a SQL text."""
     return set(_TABLE_RE.findall(sql.lower()))
 
 

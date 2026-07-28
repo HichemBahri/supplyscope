@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import datetime as dt
 import math
+import math
 import random
 
 from . import config as C
@@ -53,6 +54,7 @@ class Simulator:
         self.project_info: dict[int, dict] = {}
         self.po_info: dict[int, dict] = {}
         self.po_line_info: dict[int, dict] = {}
+        self.pol_category: dict[int, str] = {}
         self._counters: dict[str, int] = {}
 
     # ------------------------------------------------------------------ utils
@@ -289,10 +291,23 @@ class Simulator:
             chosen += extra[: C.BOQ_LINES[0] - len(chosen)]
         remaining = max(0.0, proj["budget_tnd"] - proj["spend_tnd"])
         boq_target = max(15_000.0, remaining * self.rng.uniform(0.08, 0.25))
-        weights = [self.rng.uniform(0.5, 1.5) for _ in chosen]
+        # Envelope fix (v2.2): quantity floors mean every listed material costs
+        # at least ONE unit — so big-ticket items on small budgets silently
+        # burst the procurement envelope (bug exposed by reseed: a 333k-TND
+        # project accumulated 3.3x its contract). A chain may only include
+        # materials it can afford at least one unit of; if none qualify,
+        # it takes the single cheapest so tiny projects still procure.
+        def _unit_value(mid: int) -> float:
+            info = self.material_info[mid]
+            return info["ref_price"] * self.escalation(info["category"], req) \
+                * C.FX_TO_TND.get(info.get("currency", "TND"), 1.0)
+        affordable = [m for m in chosen if _unit_value(m) <= boq_target]
+        if not affordable:
+            affordable = [min(chosen, key=_unit_value)]
+        weights = [self.rng.uniform(0.5, 1.5) for _ in affordable]
         wsum = sum(weights)
         line_ids = []
-        for mid, w in zip(chosen, weights):
+        for mid, w in zip(affordable, weights):
             info = self.material_info[mid]
             unit_value = info["ref_price"] * self.escalation(info["category"], req)
             qty = self._round_qty((boq_target * w / wsum) / unit_value, info["unit"])
@@ -402,6 +417,7 @@ class Simulator:
                                * sp["price_factor"] * self.rng.uniform(0.95, 1.10), 2)
             pol_id = self._add("po_lines", (po_id, mid, qty, unit_price))
             self.po_line_info[pol_id] = {"po_id": po_id, "qty": qty, "price": unit_price}
+            self.pol_category[pol_id] = info["category"]
             po_lines.append((pol_id, qty, unit_price))
         total = round(sum(q * p for _, q, p in po_lines), 2)
         self.po_info[po_id] = {
@@ -428,15 +444,39 @@ class Simulator:
         for k, chunk in enumerate(chunks):
             self._spawn_one_shipment(po_id, po, chunk, sp, dest, k)
 
+    def _p_late(self, sp, requires_customs, dest_country, planned,
+                lead_days, mode, category) -> float:
+        """v2.2 multi-factor risk process (see config for coefficients)."""
+        base = min(max(1.0 - sp["otd"], 0.02), 0.98)
+        a = C.RISK_SUPPLIER_WEIGHT * math.log(base / (1.0 - base)) + C.RISK_INTERCEPT
+        if requires_customs:
+            a += C.RISK_BETA_CUSTOMS
+            if dest_country == "Libye":
+                a += C.RISK_BETA_LIBYA
+                if C.STORY_CUSTOMS_CRISIS_START <= planned <= C.STORY_CUSTOMS_CRISIS_END:
+                    a += C.RISK_BETA_CRISIS
+        if lead_days > 60:
+            a += C.RISK_BETA_LONG_LEAD
+        a += C.RISK_BETA_MODE[mode]
+        a += C.RISK_BETA_CATEGORY.get(category, 0.0)
+        return 1.0 / (1.0 + math.exp(-a))
+
     def _spawn_one_shipment(self, po_id, po, chunk, sp, dest_site, k) -> None:
         dest_country = self.site_info[dest_site]["country"]
         if sp["country"] in ("Tunisie", "Libye"):
             mode = "road"
         else:
             mode = self.rng.choices(["sea", "air", "multimodal"], weights=[70, 15, 15])[0]
-        stagger = DAY * self.rng.randint(0, 14) * k
-        planned = po["promised"] + stagger
-        on_time = self.rng.random() < sp["otd"]
+        # v2.2: every partial delivery shares the PO's contractual due date.
+        # (Previously later chunks got a "staggered" due date; shipments could
+        # then be on-time vs their internal plan yet late vs the promised date
+        # used for labels — pure label noise, caught by the oracle audit.)
+        planned = po["promised"]
+        requires_customs_v2 = sp["country"] != dest_country
+        lead_days = (po["promised"] - po["order"]).days
+        dominant_cat = self.pol_category.get(chunk[0][0], "consumables") if chunk else "consumables"
+        on_time = self.rng.random() >= self._p_late(
+            sp, requires_customs_v2, dest_country, planned, lead_days, mode, dominant_cat)
         if on_time:
             actual = planned - DAY * self.rng.randint(0, C.EARLY_DAYS_MAX)
         else:

@@ -42,3 +42,9 @@ simulate:        ## Live ERP feed for the reactive demo: make simulate [interval
 
 front:           ## Run the React frontend in dev mode (http://localhost:5173)
 	cd frontend && npm run dev
+
+train:  ## Train the delivery-risk model ladder and activate the winner
+	cd backend && uv run python -m app.ml.train_risk
+
+score:  ## Score open shipments with the active model (reactive refresh)
+	cd backend && uv run python -m app.ml.scoring

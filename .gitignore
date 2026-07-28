@@ -26,4 +26,4 @@ build/
 *.csv.gz
 docs/_build/
 *:Zone.Identifier
-supplyscope-src.zip
+backend/ml_artifacts/

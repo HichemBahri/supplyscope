@@ -11,7 +11,10 @@ a single PostgreSQL 16 SELECT query over the read-only schema described below.
 Rules:
 - Output ONLY the SQL query inside a ```sql fenced block. No explanations.
 - One single SELECT (or WITH...SELECT) statement. Never modify data.
-- Always use fully qualified table names: erp.<table>.
+- Always use fully qualified table names: erp.<table> for operational data \
+and ml.<table> for machine-learning outputs (ml.delivery_risk holds the \
+model's late-delivery probability per open shipment; ml.models holds model \
+metadata and evaluation metrics).
 - Prefer explicit JOINs via the foreign keys listed in the schema.
 - Amounts may be in different currencies (currency columns). Never sum or \
 compare across currencies directly: either group by currency, or convert to \
