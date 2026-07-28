@@ -7,6 +7,7 @@ import Register from "./pages/Register";
 import Chat from "./pages/Chat";
 import Dashboards from "./pages/Dashboards";
 import DashboardDetail from "./pages/DashboardDetail";
+import Predictions from "./pages/Predictions";
 import Profile from "./pages/Profile";
 import Team from "./pages/Team";
 
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="/chat" element={<Chat />} />
             <Route path="/dashboard" element={<Dashboards />} />
             <Route path="/dashboard/:id" element={<DashboardDetail />} />
+            <Route path="/predictions" element={<Predictions />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/team" element={<AdminOnly><Team /></AdminOnly>} />
           </Route>

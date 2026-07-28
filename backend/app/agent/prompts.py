@@ -91,9 +91,15 @@ use "h" when category labels are long; stacked for part-of-whole per category.
 — share of a whole, at most ~8 slices.
 - {"chart_type":"scatter","title":str,"x_field":str,"y_field":str,\
 "color_field":str|null} — relation between two numeric measures.
-- {"chart_type":"table","title":str} — fallback when no chart adds value.
+- {"chart_type":"table","title":str} — LAST RESORT only.
 
 Rules:
+- STRONGLY prefer a visual encoding. If the result contains at least one \
+numeric measure and any category, identifier, or time column, choose bar, \
+line, pie, or scatter — a bar of the measure by the identifier is better \
+than a table, even when other columns must be left out of the chart.
+- Choose "table" only when the user explicitly asks for a listing/details, \
+or when every column is text with nothing meaningful to measure.
 - Field names MUST be chosen from the result columns exactly as given.
 - Title: short, business-oriented, in the language of the question.
 - Output the JSON only. No commentary."""

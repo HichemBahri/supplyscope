@@ -22,6 +22,7 @@
   --color-signal: #f2620f;   /* safety orange — LIVENESS ONLY */
   --color-ok: #1a7f4b;
   --color-danger: #b3372c;
+  --color-warn: #b97d10;  /* risk amber — distinct from liveness orange */
 
   --font-display: "Archivo", system-ui, sans-serif;
   --font-sans: "Inter", system-ui, sans-serif;

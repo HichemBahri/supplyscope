@@ -14,8 +14,9 @@ export function MessageBubble({ message, onPin }: Props) {
   const [showSql, setShowSql] = useState(false);
   const isUser = message.role === "user";
   const meta = message.result_meta;
-  const hasChart = !!message.chart && !!meta && !meta.failed &&
-    message.chart.chart_type !== "table";
+  // Any validated spec is pinnable — tables included: a saved table lives on
+  // dashboards and refreshes reactively exactly like a graphical chart.
+  const hasChart = !!message.chart && !!meta && !meta.failed;
 
   if (isUser) {
     return (

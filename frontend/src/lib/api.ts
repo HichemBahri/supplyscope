@@ -103,4 +103,12 @@ export const api = {
   charts: () => request<import("./types").SavedChart[]>("/api/charts"),
   chartData: (id: number) => request<import("./types").ChartData>(`/api/charts/${id}/data`),
   deleteChart: (id: number) => request<void>(`/api/charts/${id}`, { method: "DELETE" }),
+  mlModels: () => request<import("./types").MlModel[]>("/api/ml/models"),
+  mlPredictions: () => request<import("./types").RiskPrediction[]>("/api/ml/predictions"),
+  mlForecast: (category?: string) =>
+    request<import("./types").ForecastPoint[]>(
+      `/api/ml/forecast${category ? `?category=${category}` : ""}`),
+  mlTrain: () => request<object>("/api/ml/train", { method: "POST" }),
+  mlScore: () => request<{ scored: number }>("/api/ml/score", { method: "POST" }),
+  mlTrainForecast: () => request<object>("/api/ml/train-forecast", { method: "POST" }),
 };

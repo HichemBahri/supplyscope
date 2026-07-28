@@ -123,3 +123,41 @@ export interface Comment {
   has_avatar: boolean;
   created_at: string;
 }
+
+export interface MlModel {
+  model_id: number;
+  model_name: string;
+  task: "classification" | "regression";
+  algo: string;
+  version: number;
+  trained_at: string;
+  split_date: string | null;
+  train_rows: number;
+  test_rows: number;
+  metrics: Record<string, number | number[][]>;
+  comparison: Record<string, Record<string, number | number[][]>> |
+              Record<string, Record<string, Record<string, number>>>;
+  feature_importance: { feature: string; importance: number }[];
+  is_active: boolean;
+}
+
+export interface RiskPrediction {
+  prediction_id: number;
+  shipment_ref: string;
+  po_number: string;
+  project_code: string | null;
+  supplier_name: string;
+  promised_delivery_date: string | null;
+  status: string | null;
+  probability: number;
+  risk_band: "high" | "medium" | "low";
+  model_version: number;
+  scored_at: string;
+}
+
+export interface ForecastPoint {
+  category: string;
+  month: string;
+  price_index: number;
+  kind: "history" | "forecast";
+}
