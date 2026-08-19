@@ -30,6 +30,11 @@ export function useChartStream(
       const c = JSON.parse((ev as MessageEvent).data) as Comment;
       commentHandler.current?.(c);
     });
+    es.addEventListener("alerts_changed", (ev) => {
+      const s = JSON.parse((ev as MessageEvent).data);
+      // window-level broadcast: the sidebar badge listens from anywhere
+      window.dispatchEvent(new CustomEvent("ss-alerts", { detail: s }));
+    });
     es.onerror = () => setStatus("offline"); // EventSource auto-reconnects
     return () => es.close();
   }, []);

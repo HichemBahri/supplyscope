@@ -111,4 +111,12 @@ export const api = {
   mlTrain: () => request<object>("/api/ml/train", { method: "POST" }),
   mlScore: () => request<{ scored: number }>("/api/ml/score", { method: "POST" }),
   mlTrainForecast: () => request<object>("/api/ml/train-forecast", { method: "POST" }),
+  alerts: (params?: { status?: string; severity?: string }) => {
+    const q = new URLSearchParams(params as Record<string, string>).toString();
+    return request<import("./types").Alert[]>(`/api/alerts${q ? `?${q}` : ""}`);
+  },
+  alertsSummary: () => request<import("./types").AlertSummary>("/api/alerts/summary"),
+  alertRules: () => request<import("./types").AlertRule[]>("/api/alerts/rules"),
+  ackAlert: (id: number) => request<object>(`/api/alerts/${id}/ack`, { method: "POST" }),
+  evaluateAlerts: () => request<object>("/api/alerts/evaluate", { method: "POST" }),
 };

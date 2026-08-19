@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { MessageSquareText, LayoutDashboard, LogOut, Users, UserRound, BrainCircuit } from "lucide-react";
+import { MessageSquareText, LayoutDashboard, LogOut, Users, UserRound, BrainCircuit, BellRing } from "lucide-react";
 import { clsx } from "clsx";
 import { useAuth } from "../lib/auth";
 import { Avatar } from "./Avatar";
@@ -13,6 +13,7 @@ export function Sidebar() {
     { to: "/chat", label: "Assistant", icon: MessageSquareText },
     { to: "/dashboard", label: "Dashboards", icon: LayoutDashboard },
     { to: "/predictions", label: "Predictions", icon: BrainCircuit },
+    { to: "/alerts", label: "Alerts", icon: BellRing },
     ...(user?.role === "admin"
       ? [{ to: "/team", label: "Team", icon: Users }]
       : []),

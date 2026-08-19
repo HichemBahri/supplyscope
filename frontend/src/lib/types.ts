@@ -161,3 +161,26 @@ export interface ForecastPoint {
   price_index: number;
   kind: "history" | "forecast";
 }
+
+export interface Alert {
+  alert_id: number;
+  rule_code: string;
+  entity_ref: string;
+  severity: "info" | "warning" | "critical";
+  title: string;
+  detail: string;
+  context: Record<string, unknown>;
+  status: "active" | "acknowledged" | "resolved";
+  first_seen: string;
+  last_seen: string;
+  acknowledged_by: number | null;
+  acknowledged_at: string | null;
+}
+
+export interface AlertSummary {
+  critical: number; warning: number; info: number; total: number;
+}
+
+export interface AlertRule {
+  code: string; name: string; severity: string; description: string;
+}
