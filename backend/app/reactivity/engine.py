@@ -135,6 +135,7 @@ class ReactivityEngine:
     async def _process(self, tables: set[str]) -> None:
         charts = self.index.charts_for(tables)
         if not charts:
+            await self._evaluate_rules(tables)
             return
         logger.info("change in %s -> refreshing %d chart(s)",
                     sorted(tables), len(charts))
@@ -161,3 +162,21 @@ class ReactivityEngine:
                 "refreshed_at": dt.datetime.now(dt.UTC).isoformat(),
             })
             self.broadcast("chart_update", payload, audience)
+        # charts pushed first (fast path); rules evaluate after
+        await self._evaluate_rules(tables)
+
+    async def _evaluate_rules(self, tables: set[str]) -> None:
+        """Expert system: re-evaluate business rules after erp changes.
+        Derived tables are excluded so an alert write can never re-trigger
+        evaluation in a loop. Best-effort by design."""
+        _derived = {"alerts", "models", "delivery_risk", "price_forecast"}
+        if not (tables - _derived):
+            return
+        try:
+            from app.expert.engine import evaluate_all
+            summary = await asyncio.to_thread(evaluate_all)
+            self.broadcast("alerts_changed", _dumps(summary), None)
+        except Exception:
+            logger.exception("expert evaluation failed")
+
+
