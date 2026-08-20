@@ -22,6 +22,14 @@ export default function Login() {
       await login(access_token);
       nav("/chat");
     } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        setError("Email not verified — finish sign-up with the code we emailed you (Register page).");
+        setBusy(false); return;
+      }
+      if (err instanceof ApiError && err.status === 423) {
+        setError("Account temporarily locked after repeated failures — try again in 15 minutes.");
+        setBusy(false); return;
+      }
       setError(err instanceof ApiError && err.status === 401
         ? "Incorrect email or password."
         : "Can't reach the server — make sure the backend is running.");

@@ -19,8 +19,6 @@ ps:              ## Show container status
 psql:            ## Open a psql shell as the admin user
 	docker compose exec postgres psql -U $${POSTGRES_USER:-supplyscope} -d $${POSTGRES_DB:-supplyscope}
 
-reset:           ## DANGER: wipe the database volume and restart fresh
-	docker compose down -v && docker compose up -d
 
 seed:            ## Generate & load synthetic ERP data (override: make seed SEED=7)
 	set -a && . ./.env && set +a && cd backend && uv run python -m data_generator --seed $${SEED:-42}

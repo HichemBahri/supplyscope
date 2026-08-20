@@ -13,6 +13,8 @@ export default function Register() {
     job_title: "", department: "Supply Chain",
   });
   const [error, setError] = useState("");
+  const [needsCode, setNeedsCode] = useState(false);
+  const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const { login } = useAuth();
   const nav = useNavigate();
@@ -24,12 +26,19 @@ export default function Register() {
     e.preventDefault();
     setBusy(true); setError("");
     try {
-      await api.register(form);
-      const { access_token } = await api.login(form.email, form.password);
+      if (!needsCode) await api.register(form);
+      const { access_token } = needsCode
+        ? await api.verifyEmail(form.email, code)
+        : await api.login(form.email, form.password);
       await login(access_token);
       nav("/chat");
     } catch (err) {
-      if (err instanceof ApiError && err.status === 409) setError("This email is already registered.");
+      if (err instanceof ApiError && err.status === 403) {
+        setNeedsCode(true);
+        setError("We emailed you a 6-digit code — enter it to activate your account.");
+      }
+      else if (err instanceof ApiError && err.status === 401 && needsCode) setError("Wrong code — check the email and try again.");
+      else if (err instanceof ApiError && err.status === 409) setError("This email is already registered.");
       else if (err instanceof ApiError && err.status === 422) setError("Check the form: password needs at least 8 characters.");
       else setError("Can't reach the server — make sure the backend is running.");
     } finally {
@@ -71,7 +80,12 @@ export default function Register() {
         <Input className="mt-1.5" type="password" value={form.password} required minLength={8}
                onChange={set("password")} autoComplete="new-password" />
         {error && <p className="mt-3 text-sm text-danger">{error}</p>}
-        <Button className="mt-5 w-full justify-center" disabled={busy}>
+        {needsCode && (
+            <input value={code} onChange={(e) => setCode(e.target.value)}
+              maxLength={6} placeholder="6-digit verification code" inputMode="numeric"
+              className="w-full rounded-lg border border-line bg-card px-3 py-2 font-mono tracking-[0.4em] text-center" />
+          )}
+          <Button className="mt-5 w-full justify-center" disabled={busy}>
           {busy ? "Creating account…" : "Create account"}
         </Button>
         <p className="mt-4 text-center text-sm text-ink-muted">

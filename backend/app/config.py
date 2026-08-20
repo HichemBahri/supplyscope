@@ -16,6 +16,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    # --- security hardening (Phase 10) ---
+    email_verification_enabled: bool = False   # on in docker (MailHog wired)
+    smtp_host: str = "localhost"
+    smtp_port: int = 1025
+    mail_from: str = "no-reply@supplyscope.local"
+    verification_ttl_minutes: int = 15
+    max_failed_logins: int = 5
+    lockout_minutes: int = 15
+
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"), env_file_encoding="utf-8", extra="ignore"
     )

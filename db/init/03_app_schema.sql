@@ -14,6 +14,11 @@ CREATE TABLE app.users (
     department    text NOT NULL DEFAULT 'Supply Chain' CHECK (department IN
                    ('Supply Chain','Tendering','Engineering','Finance','IT','Management')),
     role          text NOT NULL DEFAULT 'analyst' CHECK (role IN ('admin','analyst','manager')),
+    is_verified   boolean NOT NULL DEFAULT false,
+    verification_code_hash text,
+    verification_expires   timestamptz,
+    failed_logins integer NOT NULL DEFAULT 0,
+    locked_until  timestamptz,
     avatar        bytea,
     avatar_mime   text,
     created_at    timestamptz NOT NULL DEFAULT now()

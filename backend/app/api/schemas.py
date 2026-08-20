@@ -31,6 +31,11 @@ class AdminUserUpdate(ProfileUpdate):
     role: str | None = Field(default=None, pattern="^(admin|analyst|manager)$")
 
 
+class VerifyRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str

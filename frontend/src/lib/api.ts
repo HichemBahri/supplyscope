@@ -119,4 +119,10 @@ export const api = {
   alertRules: () => request<import("./types").AlertRule[]>("/api/alerts/rules"),
   ackAlert: (id: number) => request<object>(`/api/alerts/${id}/ack`, { method: "POST" }),
   evaluateAlerts: () => request<object>("/api/alerts/evaluate", { method: "POST" }),
+  verifyEmail: (email: string, code: string) =>
+    request<{ access_token: string }>("/api/auth/verify", {
+      method: "POST", body: JSON.stringify({ email, code }) }),
+  resendCode: (email: string, password: string) =>
+    request<void>("/api/auth/resend", {
+      method: "POST", body: JSON.stringify({ email, password }) }),
 };

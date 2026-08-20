@@ -55,14 +55,48 @@ def count_users() -> int:
 
 
 def create_user(email: str, password_hash: str, first_name: str, last_name: str,
-                job_title: str, department: str, role: str) -> dict:
+                job_title: str, department: str, role: str,
+                is_verified: bool = True) -> dict:
     with _conn() as c:
         return c.execute(
             "INSERT INTO app.users (email, password_hash, first_name, last_name,"
-            " job_title, department, role) VALUES (%s, %s, %s, %s, %s, %s, %s) "
+            " job_title, department, role, is_verified)"
+            " VALUES (%s,%s,%s,%s,%s,%s,%s,%s) "
             f"RETURNING {_USER_COLS}",
             (email, password_hash, first_name, last_name, job_title,
-             department, role)).fetchone()
+             department, role, is_verified)).fetchone()
+
+
+def set_verification(email: str, code_hash: str, expires) -> None:
+    with _conn() as c:
+        c.execute("UPDATE app.users SET verification_code_hash=%s,"
+                  " verification_expires=%s WHERE email=%s",
+                  (code_hash, expires, email))
+
+
+def mark_verified(user_id: int) -> None:
+    with _conn() as c:
+        c.execute("UPDATE app.users SET is_verified=true,"
+                  " verification_code_hash=NULL, verification_expires=NULL"
+                  " WHERE user_id=%s", (user_id,))
+
+
+def record_failed_login(user_id: int, max_failed: int, lockout_minutes: int) -> bool:
+    """Increment the failure counter; lock and return True at the threshold."""
+    with _conn() as c:
+        row = c.execute(
+            "UPDATE app.users SET failed_logins = failed_logins + 1,"
+            " locked_until = CASE WHEN failed_logins + 1 >= %s"
+            "   THEN now() + make_interval(mins => %s) ELSE locked_until END"
+            " WHERE user_id=%s RETURNING failed_logins, locked_until",
+            (max_failed, lockout_minutes, user_id)).fetchone()
+        return row["locked_until"] is not None and row["failed_logins"] >= max_failed
+
+
+def reset_failed_logins(user_id: int) -> None:
+    with _conn() as c:
+        c.execute("UPDATE app.users SET failed_logins=0, locked_until=NULL"
+                  " WHERE user_id=%s", (user_id,))
 
 
 def get_user_by_email(email: str) -> dict | None:
