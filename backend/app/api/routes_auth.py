@@ -22,6 +22,7 @@ from app.api.schemas import (DEPARTMENTS, LoginRequest, RegisterRequest,
                              TokenResponse, UserOut, VerifyRequest)
 from app.config import get_settings
 from app.db import app_repo
+from app.services.audit import audit
 from app.services.mailer import send_verification
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -93,10 +94,13 @@ def login(body: LoginRequest) -> TokenResponse:
             locked = app_repo.record_failed_login(
                 user["user_id"], s.max_failed_logins, s.lockout_minutes)
             if locked:
+                audit("login.locked", user["user_id"], email=body.email.lower())
                 raise HTTPException(status.HTTP_423_LOCKED,
                                     "Too many attempts — account locked")
+            audit("login.failed", user["user_id"])
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials")
     if not user["is_verified"]:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Email not verified")
     app_repo.reset_failed_logins(user["user_id"])
+    audit("login.success", user["user_id"])
     return TokenResponse(access_token=security.create_token(user["user_id"]))

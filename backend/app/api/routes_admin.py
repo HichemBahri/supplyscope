@@ -8,6 +8,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_current_user
+from app.services.audit import audit, recent
 from app.api.schemas import DEPARTMENTS, AdminUserUpdate, UserOut
 from app.db import app_repo
 
@@ -37,7 +38,11 @@ def update_user(user_id: int, body: AdminUserUpdate,
             and app_repo.count_admins(excluding=user_id) == 0):
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "Cannot demote the last administrator")
-    return UserOut(**app_repo.update_user(user_id, body.model_dump()))
+    updated = app_repo.update_user(user_id, body.model_dump())
+    if body.role and body.role != target["role"]:
+        audit("user.role_changed", admin["user_id"],
+              target=user_id, old_role=target["role"], new_role=body.role)
+    return UserOut(**updated)
 
 
 @router.delete("/users/{user_id}", status_code=204)
@@ -51,4 +56,15 @@ def delete_user(user_id: int, admin: dict = Depends(require_admin)) -> None:
     if target["role"] == "admin" and app_repo.count_admins(excluding=user_id) == 0:
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "Cannot delete the last administrator")
+    audit("user.deleted", admin["user_id"], target=user_id)
+    audit("user.deleted", admin["user_id"], target=user_id,
+          email=target["email"])
     app_repo.delete_user(user_id)
+
+
+@router.get("/audit")
+def audit_trail(limit: int = 100, action: str | None = None,
+                user: dict = Depends(require_admin)) -> list[dict]:
+    """The security audit trail (Phase 10.2): logins, lockouts, role
+    changes, acknowledgments, model operations."""
+    return recent(min(limit, 500), action)

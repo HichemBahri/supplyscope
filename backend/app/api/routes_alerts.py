@@ -9,6 +9,7 @@ from app.api.deps import get_current_user, require_role
 from app.api.routes_admin import require_admin
 from app.config import get_settings
 from app.expert.rules import RULES
+from app.services.audit import audit
 
 router = APIRouter(prefix="/api/alerts", tags=["alerts"])
 
@@ -74,6 +75,7 @@ def acknowledge(alert_id: int,
             """, (user["user_id"], alert_id)).fetchone()
     if row is None:
         raise HTTPException(404, "Alert not found or not active")
+    audit("alert.acknowledged", user["user_id"], alert_id=alert_id)
     return row
 
 
