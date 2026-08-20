@@ -71,7 +71,7 @@ export default function Profile() {
                 {user.first_name} {user.last_name}
               </div>
               <div className="text-sm text-ink-muted">{user.email}</div>
-              <div className="eyebrow mt-1">{user.role === "admin" ? "Administrator" : "Analyst"} · {user.department}</div>
+              <div className="eyebrow mt-1">{{ admin: "Administrator", manager: "Manager", analyst: "Analyst" }[user.role]} · {user.department}</div>
             </div>
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp"
                    className="hidden" onChange={(e) => pickAvatar(e.target.files?.[0])} />

@@ -28,7 +28,7 @@ class ProfileUpdate(BaseModel):
 
 
 class AdminUserUpdate(ProfileUpdate):
-    role: str | None = Field(default=None, pattern="^(admin|analyst)$")
+    role: str | None = Field(default=None, pattern="^(admin|analyst|manager)$")
 
 
 class LoginRequest(BaseModel):

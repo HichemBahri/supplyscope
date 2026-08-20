@@ -57,6 +57,7 @@ export default function Dashboards() {
       <div className="mx-auto max-w-4xl">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="font-display text-xl font-bold text-navy-900">Dashboards</h1>
+          {user?.role !== "manager" && (
           <form onSubmit={create} className="ml-auto flex items-center gap-2">
             <Input className="!w-64" placeholder="New dashboard title…"
                    value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -64,6 +65,7 @@ export default function Dashboards() {
               <Plus className="size-4" /> Create
             </Button>
           </form>
+          )}
         </div>
 
         {boards === null ? (

@@ -26,6 +26,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { if (token) refreshUser(); }, []);  // hydrate on reload
 
+  // Re-verify identity when the tab regains focus: a role change or
+  // deactivation applied elsewhere (e.g. an admin promoting this user)
+  // then takes effect without a manual reload. Roles live only in the DB
+  // (never in the token), so /api/me is always the current truth.
+  useEffect(() => {
+    const revalidate = () => {
+      if (getToken() && document.visibilityState === "visible") refreshUser();
+    };
+    window.addEventListener("focus", revalidate);
+    document.addEventListener("visibilitychange", revalidate);
+    return () => {
+      window.removeEventListener("focus", revalidate);
+      document.removeEventListener("visibilitychange", revalidate);
+    };
+  }, []);
+
   const login = async (t: string) => { setToken(t); setTok(t); await refreshUser(); };
   const logout = () => { setToken(null); setTok(null); setUser(null); };
 

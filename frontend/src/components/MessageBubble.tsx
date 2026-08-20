@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, Database, Pin, RotateCcw } from "lucide-react";
 import { clsx } from "clsx";
+import { useAuth } from "../lib/auth";
 import type { Message } from "../lib/types";
 import { LazyChart } from "./LazyChart";
 import { Button } from "./ui/Button";
@@ -16,7 +17,11 @@ export function MessageBubble({ message, onPin }: Props) {
   const meta = message.result_meta;
   // Any validated spec is pinnable — tables included: a saved table lives on
   // dashboards and refreshes reactively exactly like a graphical chart.
-  const hasChart = !!message.chart && !!meta && !meta.failed;
+  const { user } = useAuth();
+  // any validated spec is pinnable — but pinning is a PRODUCER action:
+  // managers consume shared dashboards, they don't build them (Phase 9)
+  const canPin = user?.role !== "manager";
+  const hasChart = !!message.chart && !!meta && !meta.failed && canPin;
 
   if (isUser) {
     return (

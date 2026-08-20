@@ -148,7 +148,8 @@ export default function Alerts() {
                       last confirmed {new Date(a.last_seen).toLocaleString()}
                     </p>
                   </div>
-                  {a.status === "active" && (
+                  {a.status === "active" &&
+                   (user?.role === "admin" || user?.role === "manager") && (
                     <Button variant="ghost" onClick={() => ack(a.alert_id)}>
                       <CheckCheck className="size-4" /> Acknowledge
                     </Button>

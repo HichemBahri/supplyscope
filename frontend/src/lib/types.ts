@@ -77,7 +77,7 @@ export interface User {
   last_name: string;
   job_title: string;
   department: string;
-  role: "admin" | "analyst";
+  role: "admin" | "analyst" | "manager";
   has_avatar: boolean;
   created_at: string;
 }

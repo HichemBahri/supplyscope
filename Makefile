@@ -46,6 +46,9 @@ front:           ## Run the React frontend in dev mode (http://localhost:5173)
 train:  ## Train the delivery-risk model ladder and activate the winner
 	cd backend && uv run python -m app.ml.train_risk
 
+reset:  ## Restore the pristine seed-42 world + models + scores + alerts (test preconditions)
+	$(MAKE) seed && $(MAKE) train && $(MAKE) score && $(MAKE) train-forecast && $(MAKE) alerts
+
 alerts:  ## Evaluate the expert-system rules and refresh alerts
 	cd backend && uv run python -m app.expert.engine
 

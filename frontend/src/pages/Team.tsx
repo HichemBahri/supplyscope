@@ -1,6 +1,6 @@
 /** Admin-only employee management: full CRUD over accounts. */
 import { useEffect, useState } from "react";
-import { Pencil, Trash2, ShieldCheck, X, Check } from "lucide-react";
+import { Pencil, Trash2, ShieldCheck, ClipboardCheck, X, Check } from "lucide-react";
 import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { Avatar } from "../components/Avatar";
@@ -97,6 +97,7 @@ export default function Team() {
                                 onChange={(e) => setDraft((d) => ({ ...d, role: e.target.value as User["role"] }))}
                                 className="rounded-md border border-line bg-card px-2 py-1.5 text-sm">
                           <option value="analyst">Analyst</option>
+                          <option value="manager">Manager</option>
                           <option value="admin">Administrator</option>
                         </select>
                       </td>
@@ -129,6 +130,10 @@ export default function Team() {
                         {u.role === "admin" ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-navy-900/8 px-2 py-0.5 text-[12px] font-medium text-navy-900">
                             <ShieldCheck className="size-3.5" /> Admin
+                          </span>
+                        ) : u.role === "manager" ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-action/10 px-2 py-0.5 text-[12px] font-medium text-action">
+                            <ClipboardCheck className="size-3.5" /> Manager
                           </span>
                         ) : (
                           <span className="text-[12px] text-ink-muted">Analyst</span>
