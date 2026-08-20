@@ -36,3 +36,20 @@ def get_ask() -> AskFn:
     """The agent entrypoint as a dependency, so tests can override it with a
     scripted fake-LLM graph (zero API cost)."""
     return ask
+
+
+def require_role(*roles: str):
+    """Dependency factory: allow only the given roles (Phase 9 actor model).
+
+    The three actors are deliberately non-nested: managers acknowledge and
+    consume, analysts produce, admins administer. 403 carries the allowed
+    roles so the UI can explain the denial.
+    """
+    from fastapi import Depends, HTTPException
+
+    def guard(user: dict = Depends(get_current_user)) -> dict:
+        if user["role"] not in roles:
+            raise HTTPException(
+                403, f"Requires role: {' or '.join(roles)}")
+        return user
+    return guard

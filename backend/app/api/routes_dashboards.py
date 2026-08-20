@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_role
 from app.api.schemas import (
     CommentCreate, CommentOut, DashboardCreate, DashboardDetail, DashboardOut,
     DashboardUpdate,
@@ -39,7 +39,8 @@ def _reindex(request: Request) -> None:
 
 
 @router.post("", response_model=DashboardOut, status_code=201)
-def create(body: DashboardCreate, user: dict = Depends(get_current_user)) -> DashboardOut:
+def create(body: DashboardCreate,
+           user: dict = Depends(require_role("admin", "analyst"))) -> DashboardOut:
     d = app_repo.create_dashboard(user["user_id"], body.title, body.description)
     return DashboardOut(**d, owner_first_name=user["first_name"],
                         owner_last_name=user["last_name"], chart_count=0)

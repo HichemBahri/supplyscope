@@ -5,7 +5,7 @@ import psycopg
 from fastapi import APIRouter, Depends, HTTPException
 from psycopg.rows import dict_row
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_role
 from app.api.routes_admin import require_admin
 from app.config import get_settings
 from app.expert.rules import RULES
@@ -61,7 +61,8 @@ def rule_catalog(user: dict = Depends(get_current_user)) -> list[dict]:
 
 
 @router.post("/{alert_id}/ack")
-def acknowledge(alert_id: int, user: dict = Depends(get_current_user)) -> dict:
+def acknowledge(alert_id: int,
+                user: dict = Depends(require_role("admin", "manager"))) -> dict:
     with _conn() as c:
         row = c.execute(
             """

@@ -33,7 +33,7 @@ def update_user(user_id: int, body: AdminUserUpdate,
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
     if body.department is not None and body.department not in DEPARTMENTS:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Unknown department")
-    if (body.role == "analyst" and target["role"] == "admin"
+    if (body.role in ("analyst", "manager") and target["role"] == "admin"
             and app_repo.count_admins(excluding=user_id) == 0):
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "Cannot demote the last administrator")

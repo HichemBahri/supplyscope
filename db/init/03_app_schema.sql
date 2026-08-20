@@ -13,7 +13,7 @@ CREATE TABLE app.users (
     job_title     text NOT NULL,
     department    text NOT NULL DEFAULT 'Supply Chain' CHECK (department IN
                    ('Supply Chain','Tendering','Engineering','Finance','IT','Management')),
-    role          text NOT NULL DEFAULT 'analyst' CHECK (role IN ('admin','analyst')),
+    role          text NOT NULL DEFAULT 'analyst' CHECK (role IN ('admin','analyst','manager')),
     avatar        bytea,
     avatar_mime   text,
     created_at    timestamptz NOT NULL DEFAULT now()

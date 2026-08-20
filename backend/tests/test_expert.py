@@ -93,6 +93,10 @@ def test_resolve_and_refire_lifecycle():
 
 
 def test_acknowledged_survives_reevaluation(client, token):
+    # phase 9: acknowledging is a decider action — promote this user
+    with _conn() as c:
+        c.execute("UPDATE app.users SET role='manager' "
+                  "WHERE email LIKE 'expert-%%'")
     r = client.get("/api/alerts", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 200
     target = next(a for a in r.json() if a["entity_ref"] == "SUP-TSS")

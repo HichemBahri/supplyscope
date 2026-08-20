@@ -12,7 +12,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.agent.charts import ChartSpecError, parse_chart_spec
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_role
 from app.api.schemas import ChartDataOut, SaveChartRequest, SavedChartOut
 from app.db import app_repo
 from app.db.safe_executor import (
@@ -36,7 +36,8 @@ def _run(sql: str):
 
 @router.post("", response_model=SavedChartOut, status_code=201)
 def save_chart(body: SaveChartRequest, request: Request,
-               user: dict = Depends(get_current_user)) -> SavedChartOut:
+               user: dict = Depends(require_role("admin", "analyst"))
+               ) -> SavedChartOut:
     result = _run(body.sql_query)          # 1) SQL must execute (read-only)
     try:                                   # 2) spec must match its columns
         spec = parse_chart_spec(body.chart_spec, result.columns)
