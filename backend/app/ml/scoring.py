@@ -6,12 +6,11 @@ live. Model outputs become ordinary, queryable, reactive data.
 """
 from __future__ import annotations
 
-import joblib
 import psycopg
 
 from app.config import get_settings
 from app.ml import features as F
-from app.ml.registry import active_model
+from app.ml.registry import active_model, load_artifact
 
 BANDS = ((0.7, "high"), (0.4, "medium"), (0.0, "low"))
 
@@ -24,7 +23,7 @@ def score_open_orders() -> dict:
     model_row = active_model("delivery_risk")
     if model_row is None:
         raise RuntimeError("No active delivery_risk model — run training first")
-    pipe = joblib.load(model_row["artifact_path"])
+    pipe = load_artifact(model_row)
 
     df = F.scoring_frame()
     if df.empty:

@@ -54,3 +54,18 @@ def list_models(model_name: str | None = None) -> list[dict]:
                              "ORDER BY version DESC", (model_name,)).fetchall()
         return c.execute("SELECT * FROM ml.models ORDER BY model_name, version DESC"
                          ).fetchall()
+
+
+def load_artifact(model_row: dict):
+    """Load a model artifact robustly across environments: the registry may
+    hold an absolute path from the machine that trained (host vs container),
+    so fall back to resolving the FILENAME against the canonical artifact
+    directory. Lesson: store locations, not machines."""
+    from pathlib import Path
+
+    import joblib
+    path = Path(model_row["artifact_path"])
+    if not path.exists():
+        from app.ml.train_risk import ARTIFACT_DIR
+        path = ARTIFACT_DIR / path.name
+    return joblib.load(path)
