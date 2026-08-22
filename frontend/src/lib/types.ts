@@ -184,3 +184,19 @@ export interface AlertSummary {
 export interface AlertRule {
   code: string; name: string; severity: string; description: string;
 }
+
+export interface RecoBreakdownItem {
+  criterion: string; weight: number; raw: number | null;
+  normalized: number; contribution: number; direction: string;
+}
+export interface RecoCandidate {
+  supplier_id: number; supplier_code: string; name: string; country: string;
+  score: number; cold_start: boolean;
+  evidence: { category_quotes: number; delivered_shipments: number; qc_receipts: number };
+  breakdown: RecoBreakdownItem[];
+}
+export interface RecoResponse {
+  category: string; destination_country: string; preset: string;
+  weights: Record<string, number>; method: string; ml_risk_included: boolean;
+  candidates: RecoCandidate[]; note?: string;
+}

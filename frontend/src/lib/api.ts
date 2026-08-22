@@ -122,6 +122,12 @@ export const api = {
   verifyEmail: (email: string, code: string) =>
     request<{ access_token: string }>("/api/auth/verify", {
       method: "POST", body: JSON.stringify({ email, code }) }),
+  recoSuppliers: (category: string, preset: string, destination: string) =>
+    request<import("./types").RecoResponse>(
+      `/api/reco/suppliers?category=${category}&preset=${preset}&destination_country=${destination}`),
+  recoDecision: (body: object) =>
+    request<{ recorded: boolean }>("/api/reco/decisions", {
+      method: "POST", body: JSON.stringify(body) }),
   resendCode: (email: string, password: string) =>
     request<void>("/api/auth/resend", {
       method: "POST", body: JSON.stringify({ email, password }) }),
