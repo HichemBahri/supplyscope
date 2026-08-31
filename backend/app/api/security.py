@@ -31,6 +31,12 @@ def create_token(user_id: int) -> str:
 
 
 def decode_token(token: str) -> int:
-    """Return user_id or raise jwt.PyJWTError."""
-    payload = jwt.decode(token, get_settings().jwt_secret, algorithms=["HS256"])
+    """Return user_id or raise jwt.PyJWTError.
+
+    A small leeway absorbs clock skew between processes/containers (a known
+    issue under WSL2 and in CI) so a valid token is never spuriously
+    rejected as expired a second or two early.
+    """
+    payload = jwt.decode(token, get_settings().jwt_secret, algorithms=["HS256"],
+                         leeway=30)
     return int(payload["sub"])
