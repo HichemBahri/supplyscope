@@ -125,6 +125,9 @@ export const api = {
   recoSuppliers: (category: string, preset: string, destination: string) =>
     request<import("./types").RecoResponse>(
       `/api/reco/suppliers?category=${category}&preset=${preset}&destination_country=${destination}`),
+  optimizeAwards: (penalty: number, ceiling: number) =>
+    request<import("./types").OptResponse>(
+      `/api/optimize/awards?penalty_rate=${penalty}&risk_ceiling=${ceiling}`),
   recoDecision: (body: object) =>
     request<{ recorded: boolean }>("/api/reco/decisions", {
       method: "POST", body: JSON.stringify(body) }),

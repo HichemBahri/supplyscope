@@ -200,3 +200,27 @@ export interface RecoResponse {
   weights: Record<string, number>; method: string; ml_risk_included: boolean;
   candidates: RecoCandidate[]; note?: string;
 }
+
+export interface OptTotals {
+  price_tnd: number; expected_penalty_tnd: number; expected_total_tnd: number;
+  avg_p_late: number; avg_lead_days: number;
+}
+export interface OptAllocation {
+  rfq_ref: string; category: string; project: string; destination: string;
+  supplier_code: string; supplier_name: string; price_tnd: number;
+  p_late: number; expected_cost_tnd: number; was_cheapest_bid: boolean;
+  was_actual_award: boolean; bids_considered: number;
+}
+export interface OptResponse {
+  status: string; solver_ms: number; method: string;
+  parameters: Record<string, number | null>;
+  open_rfqs: number; candidate_bids: number;
+  allocations: OptAllocation[];
+  totals: OptTotals; actual_allocation: OptTotals; baseline_cheapest: OptTotals;
+  savings_vs_actual_tnd: number; savings_vs_actual_pct: number;
+  savings_vs_cheapest_tnd: number;
+  constraints_report: { budget_binding: boolean; max_supplier_share_actual: number;
+    concentration_ceiling: number; concentration_mode: string; risk_ceiling: number;
+    bids_excluded_by_risk: number; diverged_from_cheapest: number };
+  note?: string;
+}
