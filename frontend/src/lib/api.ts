@@ -125,6 +125,12 @@ export const api = {
   recoSuppliers: (category: string, preset: string, destination: string) =>
     request<import("./types").RecoResponse>(
       `/api/reco/suppliers?category=${category}&preset=${preset}&destination_country=${destination}`),
+  synthesizeDashboard: (topic: string) =>
+    request<{ dashboard_id: number; title: string; planned: number;
+      created: { question: string; chart_id: number; chart_type: string }[];
+      failed: { question: string; reason: string }[] }>(
+      "/api/dashboards/synthesize", {
+        method: "POST", body: JSON.stringify({ topic }) }),
   optimizeAwards: (penalty: number, ceiling: number) =>
     request<import("./types").OptResponse>(
       `/api/optimize/awards?penalty_rate=${penalty}&risk_ceiling=${ceiling}`),

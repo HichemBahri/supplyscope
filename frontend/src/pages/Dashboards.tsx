@@ -2,6 +2,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { Globe2, Lock, Plus } from "lucide-react";
+import { useRef } from "react";
+import { Wand2 } from "lucide-react";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import type { DashboardSummary } from "../lib/types";
@@ -12,6 +14,32 @@ import { Spinner } from "../components/ui/Spinner";
 
 export default function Dashboards() {
   const { user } = useAuth();
+  const [topic, setTopic] = useState("");
+  const [synth, setSynth] = useState<null | { stage: string; secs: number }>(null);
+  const [report, setReport] = useState<Awaited<ReturnType<typeof api.synthesizeDashboard>> | null>(null);
+  const tick = useRef<number | null>(null);
+
+  const generate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (topic.trim().length < 3 || synth) return;
+    setReport(null);
+    let secs = 0;
+    setSynth({ stage: "Planning complementary views…", secs });
+    tick.current = window.setInterval(() => {
+      secs += 1;
+      setSynth({ stage: secs < 4 ? "Planning complementary views…"
+        : "Generating and validating SQL for each view…", secs });
+    }, 1000);
+    try {
+      const out = await api.synthesizeDashboard(topic.trim());
+      setReport(out);
+      setTopic("");
+      load();                                  // refresh the dashboard list
+    } finally {
+      if (tick.current) window.clearInterval(tick.current);
+      setSynth(null);
+    }
+  };
   const [boards, setBoards] = useState<DashboardSummary[] | null>(null);
   const [title, setTitle] = useState("");
   const [creating, setCreating] = useState(false);
@@ -57,6 +85,41 @@ export default function Dashboards() {
       <div className="mx-auto max-w-4xl">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="font-display text-xl font-bold text-navy-900">Dashboards</h1>
+          {user?.role !== "manager" && (
+          <form onSubmit={generate} className="w-full mb-4">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Wand2 className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
+                <input value={topic} onChange={(e) => setTopic(e.target.value)}
+                  disabled={!!synth}
+                  placeholder='Generate a dashboard from a topic — e.g. "supplier performance", "project cost control"'
+                  className="w-full rounded-lg border border-line bg-card pl-9 pr-3 py-2 text-sm" />
+              </div>
+              <button type="submit" disabled={!!synth || topic.trim().length < 3}
+                className="rounded-lg bg-action text-white text-sm px-4 py-2 disabled:opacity-50">
+                {synth ? `${synth.secs}s…` : "Generate"}
+              </button>
+            </div>
+            {synth && (
+              <p className="text-[12px] text-ink-muted mt-2 animate-pulse">
+                {synth.stage} The agent plans, writes, executes and validates
+                each query through the same read-only path as chat.
+              </p>
+            )}
+            {report && (
+              <div className="mt-2 text-[12px] rounded-lg border border-line bg-card px-3 py-2">
+                <span className="font-semibold text-navy-900">
+                  “{report.title}” created
+                </span>{" "}
+                — {report.created.length}/{report.planned} views built
+                {report.failed.length > 0 && (
+                  <span className="text-warn"> · {report.failed.length} dropped
+                    (no data / unanswerable) — quality gates working</span>
+                )}
+              </div>
+            )}
+          </form>
+          )}
           {user?.role !== "manager" && (
           <form onSubmit={create} className="ml-auto flex items-center gap-2">
             <Input className="!w-64" placeholder="New dashboard title…"

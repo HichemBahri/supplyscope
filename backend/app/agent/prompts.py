@@ -117,3 +117,6 @@ CHART_FIX_USER = """Your previous specification was rejected:
 
 Return a corrected JSON specification (```json fence), using only the listed \
 result columns."""
+
+# (synthesis quality) For a trend of several entities over time,
+# ALWAYS set color_field to the entity column: one line per entity.

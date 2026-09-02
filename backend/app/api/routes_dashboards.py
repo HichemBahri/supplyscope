@@ -139,3 +139,15 @@ def delete_comment(comment_id: int,
         raise HTTPException(status.HTTP_403_FORBIDDEN,
                             "Only the author or an administrator can delete a comment")
     app_repo.delete_comment(comment_id)
+
+
+@router.post("/synthesize", status_code=201)
+def synthesize(body: dict,
+               user: dict = Depends(require_role("admin", "analyst"))) -> dict:
+    """Agentic dashboard synthesis: topic in, live multi-chart dashboard out."""
+    topic = (body.get("topic") or "").strip()
+    if not (3 <= len(topic) <= 200):
+        from fastapi import HTTPException
+        raise HTTPException(422, "topic must be 3-200 characters")
+    from app.agent.dashboard_synth import synthesize_dashboard
+    return synthesize_dashboard(topic, user["user_id"])
