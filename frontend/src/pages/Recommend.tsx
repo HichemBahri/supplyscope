@@ -74,7 +74,7 @@ export default function Recommend() {
           </h1>
           <p className="text-sm text-ink-muted mt-1 max-w-2xl">
             Multi-criteria ranking (Simple Additive Weighting) over the recorded
-            procurement history — TBE gate, seven weighted criteria including the
+            procurement history: TBE gate, seven weighted criteria including the
             live ML risk model. Every score decomposes into the bar below it.
           </p>
         </header>

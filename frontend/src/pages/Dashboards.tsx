@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { Globe2, Lock, Plus } from "lucide-react";
 import { useRef } from "react";
-import { Wand2 } from "lucide-react";
+import { Trash2, Wand2 } from "lucide-react";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import type { DashboardSummary } from "../lib/types";
@@ -18,6 +18,14 @@ export default function Dashboards() {
   const [synth, setSynth] = useState<null | { stage: string; secs: number }>(null);
   const [report, setReport] = useState<Awaited<ReturnType<typeof api.synthesizeDashboard>> | null>(null);
   const tick = useRef<number | null>(null);
+
+  const removeBoard = async (id: number, e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!window.confirm("Delete this dashboard? Its pinned charts survive."))
+      return;
+    await api.deleteDashboard(id);
+    load();
+  };
 
   const generate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,6 +71,13 @@ export default function Dashboards() {
       <Card className="p-4 transition-colors hover:border-action/50">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-display text-[15px] font-bold text-navy-900">{b.title}</h3>
+                {(user?.role === "admin" || b.owner_id === user?.user_id) && (
+                  <button onClick={(e) => removeBoard(b.dashboard_id, e)}
+                    className="ml-auto shrink-0 text-ink-muted hover:text-danger"
+                    title="Delete dashboard">
+                    <Trash2 className="size-4" />
+                  </button>
+                )}
           {b.is_shared ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-action/10 px-2 py-0.5 text-[11px] font-medium text-action">
               <Globe2 className="size-3" /> Team
@@ -92,7 +107,7 @@ export default function Dashboards() {
                 <Wand2 className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
                 <input value={topic} onChange={(e) => setTopic(e.target.value)}
                   disabled={!!synth}
-                  placeholder='Generate a dashboard from a topic — e.g. "supplier performance", "project cost control"'
+                  placeholder='Generate a dashboard from a topic. Example: "supplier performance", "project cost control"'
                   className="w-full rounded-lg border border-line bg-card pl-9 pr-3 py-2 text-sm" />
               </div>
               <button type="submit" disabled={!!synth || topic.trim().length < 3}

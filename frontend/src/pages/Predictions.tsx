@@ -62,7 +62,7 @@ export default function Predictions() {
             </p>
             <h1 className="text-2xl font-bold text-navy-900 font-display">Predictions</h1>
             <p className="text-sm text-ink-muted mt-1">
-              Model outputs are ordinary data here — the assistant can query them, and
+              Model outputs are ordinary data here. The assistant can query them, and
               charts built on them refresh live.
               {stamp && (
                 <span className="ml-2 font-mono text-[11px]">
@@ -97,7 +97,7 @@ export default function Predictions() {
           <Card className="p-0 overflow-hidden">
             <div className="px-5 py-4 border-b border-line">
               <h2 className="font-semibold text-navy-900 font-display">
-                Late-delivery risk — open shipments
+                Late-delivery risk : open shipments
               </h2>
               <p className="text-xs text-ink-muted mt-0.5">
                 Probability that each undelivered shipment misses its promised date.
@@ -246,7 +246,7 @@ export default function Predictions() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="font-semibold text-navy-900 font-display">
-                  Material price index — 6-month forecast
+                  Material price index : 6-month forecast
                 </h2>
                 <p className="text-xs text-ink-muted mt-0.5">
                   Median unit price vs reference, monthly. Winner of an expanding-window
@@ -279,7 +279,7 @@ export default function Predictions() {
                 {backtest && (
                   <div>
                     <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-muted uppercase font-display">
-                      Backtest — mean absolute error
+                      Backtest : mean absolute error
                     </p>
                     <div className="mt-1 space-y-1">
                       {Object.entries(backtest).sort((a, b) => a[1].mae - b[1].mae).map(([name, m]) => (
@@ -296,7 +296,7 @@ export default function Predictions() {
                     </div>
                     <p className="text-[11px] text-ink-muted mt-3 leading-relaxed">
                       Each of the last 9 months is predicted by models fit only on
-                      strictly earlier data — the honest evaluation for time series.
+                      strictly earlier data, the honest evaluation for time series.
                     </p>
                   </div>
                 )}

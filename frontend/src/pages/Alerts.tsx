@@ -69,7 +69,7 @@ export default function Alerts() {
             </p>
             <h1 className="text-2xl font-bold text-navy-900 font-display">Alerts</h1>
             <p className="text-sm text-ink-muted mt-1">
-              Business rules evaluated continuously over live data — alerts
+              Business rules evaluated continuously over live data. Alerts
               appear here the moment a condition is breached.
               {stamp && (
                 <span className="ml-2 font-mono text-[11px]">

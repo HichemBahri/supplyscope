@@ -120,3 +120,7 @@ result columns."""
 
 # (synthesis quality) For a trend of several entities over time,
 # ALWAYS set color_field to the entity column: one line per entity.
+# MANDATORY: if the SQL groups by BOTH a time column and an entity column
+# (supplier, category, country...), the line spec MUST set color_field to
+# that entity column. A multi-entity time series without color_field is
+# an invalid chart choice.

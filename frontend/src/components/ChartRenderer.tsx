@@ -42,13 +42,41 @@ export function ChartRenderer({ spec, columns, rows, height = 300 }: Props) {
       });
     }
   } else if (spec.chart_type === "line") {
-    for (const [i, y] of (spec.y_fields ?? []).entries()) {
-      data.push({
-        type: "scatter", mode: "lines+markers", name: y,
-        x: col(columns, rows, spec.x_field), y: col(columns, rows, y),
-        line: { color: SERIES[i % SERIES.length], width: 2.5 },
-        marker: { size: 5 },
-      });
+    // sort by x so lines never travel backwards in time
+    const xi = columns.indexOf(spec.x_field ?? "");
+    const sorted = xi >= 0
+      ? [...rows].sort((a, b) => String(a[xi]).localeCompare(String(b[xi])))
+      : rows;
+    const ci = spec.color_field ? columns.indexOf(spec.color_field) : -1;
+    if (ci >= 0) {
+      // one trace per entity (series split) — the fix for "spaghetti" trends
+      const yi = columns.indexOf((spec.y_fields ?? [])[0] ?? "");
+      const groups = new Map<string, { x: unknown[]; y: unknown[] }>();
+      for (const r of sorted) {
+        const k = String(r[ci]);
+        if (!groups.has(k)) groups.set(k, { x: [], y: [] });
+        groups.get(k)!.x.push(r[xi]);
+        groups.get(k)!.y.push(r[yi]);
+      }
+      let i = 0;
+      for (const [name, g] of groups) {
+        data.push({
+          type: "scatter", mode: "lines+markers", name,
+          x: g.x, y: g.y,
+          line: { color: SERIES[i % SERIES.length], width: 2.5 },
+          marker: { size: 5 },
+        });
+        i += 1;
+      }
+    } else {
+      for (const [i, y] of (spec.y_fields ?? []).entries()) {
+        data.push({
+          type: "scatter", mode: "lines+markers", name: y,
+          x: col(columns, sorted, spec.x_field), y: col(columns, sorted, y),
+          line: { color: SERIES[i % SERIES.length], width: 2.5 },
+          marker: { size: 5 },
+        });
+      }
     }
   } else if (spec.chart_type === "pie") {
     data.push({

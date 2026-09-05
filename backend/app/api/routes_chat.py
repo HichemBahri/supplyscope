@@ -67,3 +67,21 @@ def messages(conversation_id: int,
     if app_repo.get_conversation(conversation_id, user["user_id"]) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
     return [MessageOut(**m) for m in app_repo.list_messages(conversation_id)]
+
+
+@router.delete("/conversations/{conversation_id}", status_code=204)
+def delete_conversation(conversation_id: int,
+                        user: dict = Depends(get_current_user)) -> None:
+    """Delete one of the caller's own conversations (and its messages,
+    via FK cascade). Owner-scoped: you can only delete your own."""
+    import psycopg
+
+    from app.config import get_settings
+    with psycopg.connect(get_settings().app_dsn, autocommit=True) as c:
+        cur = c.execute(
+            "DELETE FROM app.conversations "
+            "WHERE conversation_id = %s AND user_id = %s",
+            (conversation_id, user["user_id"]))
+        if cur.rowcount == 0:
+            from fastapi import HTTPException
+            raise HTTPException(404, "Conversation not found")

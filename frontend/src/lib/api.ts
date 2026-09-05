@@ -73,6 +73,8 @@ export const api = {
   updateDashboard: (id: number, body: object) =>
     request<import("./types").DashboardSummary>(`/api/dashboards/${id}`, {
       method: "PATCH", body: JSON.stringify(body) }),
+  deleteConversation: (id: number) =>
+    request<void>(`/api/conversations/${id}`, { method: "DELETE" }),
   deleteDashboard: (id: number) =>
     request<void>(`/api/dashboards/${id}`, { method: "DELETE" }),
   addChartToDashboard: (id: number, chartId: number) =>

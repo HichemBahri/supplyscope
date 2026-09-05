@@ -223,7 +223,7 @@ export default function DashboardDetail() {
         <div className="flex-1 overflow-y-auto px-4 py-3">
           {comments.length === 0 ? (
             <p className="mt-6 text-center text-sm text-ink-muted">
-              No comments yet — start the discussion.
+              No comments yet! start the discussion.
             </p>
           ) : comments.map((c) => (
             <div key={c.comment_id} className="mb-3 flex gap-2.5">

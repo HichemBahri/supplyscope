@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Plus, SendHorizonal } from "lucide-react";
+import { Plus, SendHorizonal, X } from "lucide-react";
 import { clsx } from "clsx";
 import { api, ApiError } from "../lib/api";
 import type { Conversation, Message } from "../lib/types";
@@ -68,18 +68,33 @@ export default function Chat() {
         </div>
         <div className="flex-1 overflow-y-auto px-2 pb-3">
           {conversations.map((c) => (
-            <button
-              key={c.conversation_id}
-              onClick={() => setActiveId(c.conversation_id)}
-              className={clsx(
-                "mb-1 w-full truncate rounded-md px-3 py-2 text-left text-[13px] transition-colors",
-                c.conversation_id === activeId
-                  ? "bg-navy-900/6 font-medium text-navy-900"
-                  : "text-ink-muted hover:bg-line/50 hover:text-ink",
-              )}
-            >
-              {c.title}
-            </button>
+            <div key={c.conversation_id} className="group relative">
+              <button
+                onClick={() => setActiveId(c.conversation_id)}
+                className={clsx(
+                  "mb-1 w-full truncate rounded-md px-3 py-2 pr-8 text-left text-[13px] transition-colors",
+                  c.conversation_id === activeId
+                    ? "bg-navy-900/6 font-medium text-navy-900"
+                    : "text-ink-muted hover:bg-line/50 hover:text-ink",
+                )}
+              >
+                {c.title}
+              </button>
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!window.confirm("Delete this conversation?")) return;
+                  await api.deleteConversation(c.conversation_id);
+                  setConversations((cs) =>
+                    cs.filter((x) => x.conversation_id !== c.conversation_id));
+                  if (activeId === c.conversation_id) setActiveId(null);
+                }}
+                title="Delete conversation"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 hidden group-hover:block text-ink-muted hover:text-danger"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
           ))}
         </div>
       </div>

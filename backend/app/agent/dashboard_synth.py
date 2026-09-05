@@ -49,6 +49,8 @@ DATA AWARENESS — the dataset is a 5-year history of a mid-size contractor
   deliveries) so tiny histories cannot dominate;
 - ask only questions answerable from ONE schema's tables joined on real
   keys; do not invent joins between erp prices and ml forecasts;
+- never combine two metrics of very different scales (e.g. a 0-100%
+  rate with a near-zero variance) in ONE chart — one metric per view;
 - a question whose answer would be a single entity's flat line is a bad
   view; prefer aggregations with guaranteed non-empty results.
 Good dashboards mix granularities: one headline KPI, one ranking or
@@ -98,6 +100,10 @@ def synthesize_dashboard(topic: str, user_id: int,
             a = ask_fn(q, "fast")
             if a.failed or not a.chart:
                 raise RuntimeError(a.answer or "agent could not answer")
+            vals = getattr(a, "sample_values", None)
+            if vals and len(set(map(str, vals))) == 1 and len(vals) > 2:
+                raise RuntimeError("uninformative: metric is constant "
+                                   "across all rows — view dropped")
             if getattr(a, "row_count", 1) == 0:
                 raise RuntimeError("query returned no data — view dropped "
                                    "rather than shipping an empty chart")
