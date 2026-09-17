@@ -124,9 +124,15 @@ export const api = {
   verifyEmail: (email: string, code: string) =>
     request<{ access_token: string }>("/api/auth/verify", {
       method: "POST", body: JSON.stringify({ email, code }) }),
-  recoSuppliers: (category: string, preset: string, destination: string) =>
-    request<import("./types").RecoResponse>(
-      `/api/reco/suppliers?category=${category}&preset=${preset}&destination_country=${destination}`),
+  recoSuppliers: (category: string, preset: string, destination: string,
+                  weights?: Record<string, number>) => {
+    let q = `category=${category}&preset=${preset}&destination_country=${destination}`;
+    if (weights) {
+      q += Object.entries(weights)
+        .map(([k, v]) => `&w_${k}=${v}`).join("");
+    }
+    return request<import("./types").RecoResponse>(`/api/reco/suppliers?${q}`);
+  },
   synthesizeDashboard: (topic: string) =>
     request<{ dashboard_id: number; title: string; planned: number;
       created: { question: string; chart_id: number; chart_type: string }[];

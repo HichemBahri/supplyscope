@@ -123,12 +123,29 @@ export default function Optimize() {
 
             {/* constraints strip */}
             {r && (
-              <p className="text-[12px] text-ink-muted mb-3 font-mono">
-                {data.open_rfqs} RFQs · {data.candidate_bids} bids ·
-                excluded by risk: <span className="text-danger font-semibold">{r.bids_excluded_by_risk}</span> ·
-                diverged from cheapest: <span className="text-action font-semibold">{r.diverged_from_cheapest}</span> ·
-                max supplier share {(r.max_supplier_share_actual * 100).toFixed(1)}% / {(r.concentration_ceiling * 100).toFixed(0)}% ({r.concentration_mode})
-              </p>
+              <div className="mb-3">
+                <p className="text-[12px] text-ink-muted font-mono">
+                  {data.open_rfqs} RFQs · {data.candidate_bids} bids ·
+                  above ceiling: <span className="text-danger font-semibold">{r.bids_above_ceiling}</span> ·
+                  policy enforced on <span className="font-semibold">{r.rfqs_ceiling_enforced}</span> RFQs
+                  {r.rfqs_ceiling_waived > 0 && (
+                    <> · <span className="text-warn font-semibold">waived on {r.rfqs_ceiling_waived}</span></>
+                  )} ·
+                  bids forbidden: <span className="text-danger font-semibold">{r.bids_excluded_by_risk}</span> ·
+                  diverged from cheapest: <span className="text-action font-semibold">{r.diverged_from_cheapest}</span> ·
+                  max supplier share {(r.max_supplier_share_actual * 100).toFixed(1)}% / {(r.concentration_ceiling * 100).toFixed(0)}% ({r.concentration_mode})
+                </p>
+                {r.rfqs_ceiling_waived > 0 && (
+                  <p className="text-[11px] text-warn mt-1">
+                    On {r.rfqs_ceiling_waived} RFQ{r.rfqs_ceiling_waived > 1 ? "s" : ""} no
+                    bid meets this risk ceiling, so the policy is suspended there rather
+                    than leaving the order unfillable
+                    {r.waived_rfq_refs?.length ? ` (${r.waived_rfq_refs.slice(0, 4).join(", ")}${r.waived_rfq_refs.length > 4 ? "…" : ""})` : ""}.
+                    Tightening the ceiling further raises this count, not the number of
+                    forbidden bids.
+                  </p>
+                )}
+              </div>
             )}
 
             {/* allocation table */}

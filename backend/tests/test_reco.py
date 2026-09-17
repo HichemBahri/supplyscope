@@ -81,3 +81,41 @@ def test_api_read_for_all_decision_for_deciders(client):
                         "action='reco.decision' ORDER BY audit_id DESC "
                         "LIMIT 1").fetchone()
     assert row[0]["followed_recommendation"] is True
+
+
+def test_custom_weights_normalize_and_decompose():
+    """Sliders can never break the invariant: any non-negative vector is
+    normalized to sum 1.0 and contributions still sum to the score."""
+    out = recommend("steel", custom_weights={"price": 3.0, "reliability": 1.0})
+    assert out["preset"] == "custom"
+    assert abs(sum(out["weights"].values()) - 1.0) < 1e-9
+    assert abs(out["weights"]["price"] - 0.75) < 1e-9
+    for c in out["candidates"]:
+        assert abs(sum(b["contribution"] for b in c["breakdown"])
+                   - c["score"]) < 1e-6
+
+
+def test_custom_weights_matching_preset_reproduce_it():
+    from app.reco.engine import PRESETS
+    a = recommend("steel", preset="balanced")["candidates"]
+    b = recommend("steel", custom_weights=dict(PRESETS["balanced"]))["candidates"]
+    assert [c["supplier_code"] for c in a] == [c["supplier_code"] for c in b]
+    assert all(abs(x["score"] - y["score"]) < 1e-9 for x, y in zip(a, b))
+
+
+def test_pure_price_weighting_finally_crowns_tss():
+    """The decision-maker's freedom is real: declare that ONLY price matters
+    and the cheapest supplier (SUP-TSS) must rank first — the system obeys
+    the preference instead of overriding it."""
+    out = recommend("steel", custom_weights={"price": 1.0})
+    assert out["candidates"][0]["supplier_code"] == "SUP-TSS"
+
+
+def test_invalid_custom_weights_rejected(client):
+    tok = _tok(client)
+    h = {"Authorization": f"Bearer {tok}"}
+    r = client.get("/api/reco/suppliers?category=steel&w_price=-1", headers=h)
+    assert r.status_code == 422
+    ok = client.get("/api/reco/suppliers?category=steel&w_price=2&w_quality=1",
+                    headers=h)
+    assert ok.status_code == 200 and ok.json()["preset"] == "custom"

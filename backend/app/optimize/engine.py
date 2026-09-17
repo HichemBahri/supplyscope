@@ -190,15 +190,31 @@ def optimize_awards(budget_tnd: float | None = None,
                  f"award_rfq_{r}")
     # risk ceiling: exclude any bid above the threshold *provided* the RFQ
     # still has at least one compliant bid — never make an RFQ unfillable
+    # Risk policy accounting. Three DIFFERENT quantities, reported separately
+    # because they diverge and conflating them is misleading:
+    #   above     — bids whose p(late) exceeds the ceiling (monotone in it)
+    #   enforced  — RFQs where the policy applies (a compliant bid exists)
+    #   waived    — RFQs with NO compliant bid: the policy cannot be honored
+    #               without leaving the order unfillable, so it is suspended
+    #               there (and none of those bids count as excluded)
+    # Because loosening the ceiling switches the policy ON for more RFQs,
+    # `excluded` is NOT monotone in the ceiling — it rises before it falls.
     risk_excluded = 0
+    bids_above_ceiling = sum(1 for b in bids if b["p_late"] > risk_ceiling)
+    rfqs_enforced = rfqs_waived = 0
+    waived_refs: list[str] = []
     for r in rfqs:
         compliant = [b for b in by_rfq[r] if b["p_late"] <= risk_ceiling]
         if compliant:                               # only enforce if feasible
+            rfqs_enforced += 1
             for b in by_rfq[r]:
                 if b["p_late"] > risk_ceiling:
                     prob += (x[b["quotation_id"]] == 0,
                              f"risk_ceiling_{b['quotation_id']}")
                     risk_excluded += 1
+        else:
+            rfqs_waived += 1
+            waived_refs.append(by_rfq[r][0]["rfq_ref"])
     if budget_tnd is not None:                      # budget on cash spend
         prob += (pulp.lpSum(x[b["quotation_id"]] * b["price_tnd"]
                             for b in bids) <= budget_tnd, "budget")
@@ -293,6 +309,10 @@ def optimize_awards(budget_tnd: float | None = None,
             "concentration_mode": concentration_mode,
             "risk_ceiling": risk_ceiling,
             "bids_excluded_by_risk": risk_excluded,
+            "bids_above_ceiling": bids_above_ceiling,
+            "rfqs_ceiling_enforced": rfqs_enforced,
+            "rfqs_ceiling_waived": rfqs_waived,
+            "waived_rfq_refs": sorted(waived_refs)[:12],
             "diverged_from_cheapest": sum(
                 1 for b in chosen if b is not min(
                     by_rfq[b["rfq_id"]], key=lambda q: q["price_tnd"])),

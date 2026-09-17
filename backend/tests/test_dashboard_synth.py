@@ -31,6 +31,9 @@ PLAN = json.dumps({
 })
 
 
+from dataclasses import field
+
+
 @dataclass
 class FakeAnswer:
     failed: bool
@@ -38,6 +41,8 @@ class FakeAnswer:
     sql: str
     answer: str = ""
     row_count: int = 1
+    columns: list = field(default_factory=lambda: ["name", "rate"])
+    rows: list = field(default_factory=lambda: [["a", 1], ["b", 2]])
 
 
 def fake_ask(question: str, tier: str) -> FakeAnswer:
@@ -60,6 +65,27 @@ def test_plan_parses_even_with_prose_wrapping():
                           FakePlanner("Here you go:\n" + PLAN + "\nEnjoy!"))
     assert plan["title"] == "Supplier performance"
     assert len(plan["views"]) == 3
+
+
+def test_constant_metric_view_is_dropped():
+    """The zero-variance gate: an all-identical metric (e.g. every supplier
+    at 100%) ships no chart."""
+    uid = _user()
+
+    def ask_const(question, tier):
+        a = fake_ask(question, tier)
+        if not a.failed:
+            a.rows = [["s1", 100.0], ["s2", 100.0], ["s3", 100.0],
+                      ["s4", 100.0]]
+            a.chart = {"chart_type": "bar", "title": "t",
+                       "x_field": "name", "y_fields": ["rate"]}
+        return a
+
+    out = synthesize_dashboard("acceptance", uid,
+                               llm=FakePlanner(PLAN), ask_fn=ask_const)
+    assert len(out["created"]) == 0
+    assert all("constant" in f["reason"] for f in out["failed"][:2])
+    app_repo.delete_dashboard(out["dashboard_id"])
 
 
 def test_synthesis_assembles_and_tolerates_partial_failure():

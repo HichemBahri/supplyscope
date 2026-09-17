@@ -100,10 +100,18 @@ def synthesize_dashboard(topic: str, user_id: int,
             a = ask_fn(q, "fast")
             if a.failed or not a.chart:
                 raise RuntimeError(a.answer or "agent could not answer")
-            vals = getattr(a, "sample_values", None)
-            if vals and len(set(map(str, vals))) == 1 and len(vals) > 2:
-                raise RuntimeError("uninformative: metric is constant "
-                                   "across all rows — view dropped")
+            rows = getattr(a, "rows", None) or []
+            cols = getattr(a, "columns", []) or []
+            if len(rows) > 2 and cols:
+                # the metric column is the chart's own y/value field;
+                # fall back to the last column (metrics conventionally last)
+                metric = ((a.chart.get("y_fields") or [None])[0]
+                          or a.chart.get("value_field"))
+                idx = cols.index(metric) if metric in cols else len(cols) - 1
+                if len({str(r[idx]) for r in rows}) == 1:
+                    raise RuntimeError(
+                        "uninformative: metric is constant across all "
+                        "rows — view dropped")
             if getattr(a, "row_count", 1) == 0:
                 raise RuntimeError("query returned no data — view dropped "
                                    "rather than shipping an empty chart")

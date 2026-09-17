@@ -221,6 +221,8 @@ export interface OptResponse {
   savings_vs_cheapest_tnd: number;
   constraints_report: { budget_binding: boolean; max_supplier_share_actual: number;
     concentration_ceiling: number; concentration_mode: string; risk_ceiling: number;
-    bids_excluded_by_risk: number; diverged_from_cheapest: number };
+    bids_excluded_by_risk: number; diverged_from_cheapest: number;
+    bids_above_ceiling: number; rfqs_ceiling_enforced: number;
+    rfqs_ceiling_waived: number; waived_rfq_refs: string[] };
   note?: string;
 }

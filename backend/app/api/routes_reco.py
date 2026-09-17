@@ -18,9 +18,21 @@ def presets(user: dict = Depends(get_current_user)) -> dict:
 @router.get("/suppliers")
 def suppliers(category: str, destination_country: str = "Tunisie",
               preset: str = "balanced", top_n: int = 5,
+              w_technical: float | None = None, w_price: float | None = None,
+              w_lead_time: float | None = None,
+              w_reliability: float | None = None,
+              w_quality: float | None = None, w_terms: float | None = None,
+              w_ml_risk: float | None = None,
               user: dict = Depends(get_current_user)) -> dict:
+    """Preset mode by default; any w_* parameter switches to custom-weight
+    mode (the decision-maker's own preference vector, normalized server-side)."""
+    supplied = {"technical": w_technical, "price": w_price,
+                "lead_time": w_lead_time, "reliability": w_reliability,
+                "quality": w_quality, "terms": w_terms, "ml_risk": w_ml_risk}
+    custom = {k: v for k, v in supplied.items() if v is not None}
     try:
-        return recommend(category, destination_country, preset, min(top_n, 10))
+        return recommend(category, destination_country, preset,
+                         min(top_n, 10), custom_weights=custom or None)
     except ValueError as e:
         raise HTTPException(422, str(e))
 

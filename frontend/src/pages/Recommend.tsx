@@ -3,7 +3,7 @@
  *  criterion's contribution to the score: the explanation is the chart.
  *  Deciders (admin/manager) approve a supplier; the decision lands in the
  *  audit trail with a followed-the-recommendation flag. */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Award, CheckCircle2, Scale } from "lucide-react";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -20,6 +20,14 @@ const PRESETS = [
   { id: "schedule_focused", label: "Schedule-focused" },
 ];
 const DESTS = ["Tunisie", "Libye"];
+const PRESET_WEIGHTS: Record<string, Record<string, number>> = {
+  balanced: { technical: 15, price: 20, lead_time: 10, reliability: 20,
+              quality: 10, terms: 5, ml_risk: 20 },
+  cost_focused: { technical: 10, price: 40, lead_time: 5, reliability: 15,
+                  quality: 10, terms: 10, ml_risk: 10 },
+  schedule_focused: { technical: 10, price: 10, lead_time: 25,
+                      reliability: 25, quality: 5, terms: 0, ml_risk: 25 },
+};
 
 // one stable color per criterion (distinct from severity + liveness hues)
 const CRIT_COLOR: Record<string, string> = {
@@ -37,6 +45,10 @@ export default function Recommend() {
   const { user } = useAuth();
   const [category, setCategory] = useState("steel");
   const [preset, setPreset] = useState("balanced");
+  const [weights, setWeights] =
+    useState<Record<string, number>>({ ...PRESET_WEIGHTS.balanced });
+  const [custom, setCustom] = useState(false);
+  const wTimer = useRef<number | null>(null);
   const [dest, setDest] = useState("Tunisie");
   const [data, setData] = useState<RecoResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -46,11 +58,18 @@ export default function Recommend() {
   const load = useCallback(() => {
     setLoading(true);
     setApproved(null);
-    api.recoSuppliers(category, preset, dest)
+    api.recoSuppliers(category, preset, dest, custom ? weights : undefined)
       .then(setData)
       .finally(() => setLoading(false));
-  }, [category, preset, dest]);
+  }, [category, preset, dest, custom, weights]);
   useEffect(() => { load(); }, [load]);
+
+  const onWeight = (k: string, v: number) => {
+    setCustom(true);
+    setWeights((w) => ({ ...w, [k]: v }));
+    if (wTimer.current) window.clearTimeout(wTimer.current);
+    wTimer.current = window.setTimeout(() => load(), 350);
+  };
 
   const approve = async (c: RecoCandidate) => {
     await api.recoDecision({
@@ -93,9 +112,11 @@ export default function Recommend() {
         <div className="flex flex-wrap items-center gap-2 mb-5">
           <span className="text-[11px] uppercase tracking-wider text-ink-muted">Profile</span>
           {PRESETS.map((p) => (
-            <button key={p.id} onClick={() => setPreset(p.id)}
+            <button key={p.id}
+              onClick={() => { setPreset(p.id); setCustom(false);
+                setWeights({ ...PRESET_WEIGHTS[p.id] }); }}
               className={`text-[12px] px-3 py-1 rounded-full border transition-colors ${
-                p.id === preset ? "bg-action text-white border-action"
+                p.id === preset && !custom ? "bg-action text-white border-action"
                 : "bg-card text-ink-muted border-line hover:border-action"}`}>
               {p.label}
             </button>
@@ -109,6 +130,37 @@ export default function Recommend() {
               {d}
             </button>
           ))}
+        </div>
+
+        {/* weight sliders — the decision-maker's own preference vector */}
+        <div className="rounded-xl border border-line bg-card p-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-muted uppercase font-display">
+              Criterion weights {custom && <span className="text-action">· custom</span>}
+            </p>
+            <p className="text-[11px] text-ink-muted">
+              drag freely — weights are normalized to sum to 1
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2">
+            {Object.keys(CRIT_LABEL).map((k) => {
+              const sum = Object.values(weights).reduce((a, b) => a + b, 0) || 1;
+              return (
+                <label key={k} className="flex items-center gap-2 text-[12px]">
+                  <span className="size-2.5 rounded-sm shrink-0"
+                    style={{ background: CRIT_COLOR[k] }} />
+                  <span className="w-32 shrink-0 text-ink">{CRIT_LABEL[k]}</span>
+                  <input type="range" min={0} max={50} step={5}
+                    value={weights[k] ?? 0}
+                    onChange={(e) => onWeight(k, parseInt(e.target.value))}
+                    className="flex-1 accent-action" />
+                  <span className="w-12 text-right font-mono text-ink-muted">
+                    {(100 * (weights[k] ?? 0) / sum).toFixed(0)}%
+                  </span>
+                </label>
+              );
+            })}
+          </div>
         </div>
 
         {/* legend */}

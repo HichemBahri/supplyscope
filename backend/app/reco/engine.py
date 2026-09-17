@@ -178,11 +178,43 @@ def _minmax(values: dict[int, float | None], invert: bool) -> dict[int, float]:
     return out
 
 
+ALL_CRITERIA = ("technical", "price", "lead_time", "reliability",
+                "quality", "terms", "ml_risk")
+
+
+def normalize_weights(raw: dict[str, float]) -> dict[str, float]:
+    """Validate a user-supplied weight vector and normalize it to sum 1.0.
+
+    MCDA principle: weights are PREFERENCE parameters of the decision-maker,
+    not facts of the world — so the system's job is not to impose them but
+    to (a) accept any non-negative emphasis the user expresses, (b) reject
+    only the meaningless (unknown criteria, negatives, all-zero), and
+    (c) normalize so the explainability invariant — contributions sum to
+    the score — holds for every possible slider position.
+    """
+    unknown = set(raw) - set(ALL_CRITERIA)
+    if unknown:
+        raise ValueError(f"Unknown criteria: {sorted(unknown)}; "
+                         f"valid: {list(ALL_CRITERIA)}")
+    if any(v < 0 for v in raw.values()):
+        raise ValueError("Weights must be non-negative")
+    total = sum(raw.values())
+    if total <= 0:
+        raise ValueError("At least one weight must be positive")
+    return {k: v / total for k, v in raw.items() if v > 0}
+
+
 def recommend(category: str, destination_country: str = "Tunisie",
-              preset: str = "balanced", top_n: int = 5) -> dict[str, Any]:
-    if preset not in PRESETS:
-        raise ValueError(f"Unknown preset '{preset}'")
-    weights = PRESETS[preset]
+              preset: str = "balanced", top_n: int = 5,
+              custom_weights: dict[str, float] | None = None
+              ) -> dict[str, Any]:
+    if custom_weights is not None:
+        weights = normalize_weights(custom_weights)
+        preset = "custom"
+    else:
+        if preset not in PRESETS:
+            raise ValueError(f"Unknown preset '{preset}'")
+        weights = PRESETS[preset]
     with psycopg.connect(get_settings().app_dsn, row_factory=dict_row) as conn:
         cands = conn.execute(_CANDIDATES_SQL,
                              {"category": category, "tbe": TBE_THRESHOLD}
