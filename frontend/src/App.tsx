@@ -8,6 +8,7 @@ import Chat from "./pages/Chat";
 import Dashboards from "./pages/Dashboards";
 import DashboardDetail from "./pages/DashboardDetail";
 import Alerts from "./pages/Alerts";
+import ToastHost from "./components/ToastHost";
 import Optimize from "./pages/Optimize";
 import Recommend from "./pages/Recommend";
 import Predictions from "./pages/Predictions";
@@ -27,6 +28,7 @@ function Protected() {
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <Outlet />
+      <ToastHost />
     </div>
   );
 }

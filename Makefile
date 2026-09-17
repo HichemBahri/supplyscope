@@ -44,6 +44,9 @@ front:           ## Run the React frontend in dev mode (http://localhost:5173)
 train:  ## Train the delivery-risk model ladder and activate the winner
 	cd backend && uv run python -m app.ml.train_risk
 
+demo-alerts:  ## jury demo: trip alert rules against the live stack
+	cd backend && uv run python -m scripts.demo_alerts
+
 bench-scale:  ## pandas-vs-Spark crossover benchmark (needs: uv sync --group bigdata + a JRE)
 	cd backend && uv run python -m scripts.bench_scale
 

@@ -18,6 +18,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     # --- security hardening (Phase 10) ---
     email_verification_enabled: bool = False   # on in docker (MailHog wired)
+    alert_email_enabled: bool = False          # critical alerts -> deciders
+    alert_retention_months: int = 7            # purge RESOLVED older than this
     smtp_host: str = "localhost"
     smtp_port: int = 1025
     mail_from: str = "no-reply@supplyscope.local"

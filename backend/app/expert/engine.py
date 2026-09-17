@@ -99,7 +99,14 @@ def evaluate_all() -> dict:
 
     with psycopg.connect(s.app_dsn, autocommit=True) as conn:
         new = reactivated = 0
+        new_criticals: list[tuple[str, str]] = []
         with conn.cursor() as cur:
+            # snapshot prior statuses: an alert is RAISED when it is either
+            # brand new or returning from 'resolved'. A condition that
+            # cleared and came back is news — it must notify again, or a
+            # recurring problem would announce itself exactly once, ever.
+            cur.execute("SELECT rule_code, entity_ref, status FROM es.alerts")
+            prior = {(r[0], r[1]): r[2] for r in cur.fetchall()}
             for row in fired:
                 cur.execute(
                     """
@@ -119,7 +126,13 @@ def evaluate_all() -> dict:
                               (status = 'active' AND xmax <> 0) AS kept
                     """, row)
                 inserted, _ = cur.fetchone()
-                new += int(bool(inserted))
+                was = prior.get((row[0], row[1]))
+                if inserted:
+                    new += 1
+                elif was == "resolved":
+                    reactivated += 1
+                if (inserted or was == "resolved") and row[2] == "critical":
+                    new_criticals.append((row[3], row[4]))
             # resolve alerts whose condition no longer holds
             codes = [k[0] for k in firing_keys]
             refs = [k[1] for k in firing_keys]
@@ -135,11 +148,47 @@ def evaluate_all() -> dict:
                 RETURNING alert_id
                 """, (codes, refs))
             resolved = cur.rowcount
+            # retention: purge RESOLVED alerts past the window. Active and
+            # acknowledged alerts are never purged — a condition that still
+            # holds must stay visible, however old.
+            cur.execute(
+                "DELETE FROM es.alerts WHERE status = 'resolved' "
+                "AND resolved_at < now() - make_interval(months => %s)",
+                (s.alert_retention_months,))
+            purged = cur.rowcount
+        # critical-alert email to deciders (flag-controlled, best-effort)
+        if new_criticals and s.alert_email_enabled:
+            try:
+                # NB: this connection has no dict row_factory (see the
+                # tuple unpacking below) — index positionally.
+                # RFC 2606 reserves example.* / .test / .invalid for
+                # testing: they must never receive mail. This also keeps
+                # test-suite fixture accounts (all on example.com) out of
+                # real notifications when tests share the dev database.
+                rows = conn.execute(
+                    "SELECT email FROM app.users "
+                    "WHERE role IN ('admin', 'manager') AND is_verified "
+                    "AND email NOT LIKE '%@example.%' "
+                    "AND email NOT LIKE '%.test' "
+                    "AND email NOT LIKE '%.invalid'").fetchall()
+                recipients = [r[0] for r in rows]
+                if not recipients:
+                    logger.warning("critical alerts raised but no active "
+                                   "admin/manager to notify")
+                from app.services.mailer import send_critical_alerts
+                send_critical_alerts(recipients, new_criticals)
+            except Exception:                           # noqa: BLE001
+                logger.exception("critical-alert email failed (non-fatal)")
         counts = conn.execute(
             "SELECT severity, count(*) FROM es.alerts "
             "WHERE status <> 'resolved' GROUP BY severity").fetchall()
     by_sev = {sev: n for sev, n in counts}
-    summary = {"firing": len(fired), "new": new, "resolved": resolved,
+    summary = {"firing": len(fired), "new": new,
+               "reactivated": reactivated,
+               "raised": new + reactivated,      # what the UI notifies on
+               "resolved": resolved,
+               "purged": purged,
+               "new_critical": len(new_criticals),
                "active_critical": by_sev.get("critical", 0),
                "active_warning": by_sev.get("warning", 0),
                "active_info": by_sev.get("info", 0)}
