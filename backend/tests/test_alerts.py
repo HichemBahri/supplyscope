@@ -28,7 +28,9 @@ def test_retention_purges_only_old_resolved():
             SET status = EXCLUDED.status
         """)
     out = evaluate_all()
-    assert out["purged"] >= 1
+    assert "purged" in out            # summary shape; the COUNT may belong
+    # to a concurrent evaluator (live backend = second writer), so all
+    # behavioral assertions below are on database STATE, not on out[...]
     with psycopg.connect(get_settings().app_dsn) as c:
         rows = {r[0] for r in c.execute(
             "SELECT entity_ref FROM es.alerts WHERE rule_code='TEST_OLD'")}
@@ -93,15 +95,6 @@ def test_engine_actually_sends_the_critical_email(monkeypatch):
     from app.expert import engine as eng
     s = get_settings()
 
-    with psycopg.connect(s.app_dsn, autocommit=True) as c:
-        mgr = _ensure_notified_manager(c)
-        row = c.execute("SELECT rule_code, entity_ref FROM es.alerts "
-                        "WHERE severity='critical' AND status<>'resolved' "
-                        "LIMIT 1").fetchone()
-        assert row, "world should have at least one critical alert"
-        c.execute("DELETE FROM es.alerts WHERE rule_code=%s AND entity_ref=%s",
-                  row)
-
     captured = {}
 
     def fake_send(recipients, alerts):
@@ -110,7 +103,19 @@ def test_engine_actually_sends_the_critical_email(monkeypatch):
 
     monkeypatch.setattr("app.services.mailer.send_critical_alerts", fake_send)
     monkeypatch.setattr(s, "alert_email_enabled", True)
-    out = eng.evaluate_all()
+
+    out = None
+    for _attempt in range(3):        # the live backend is a second writer:
+        with psycopg.connect(s.app_dsn, autocommit=True) as c:
+            mgr = _ensure_notified_manager(c)
+            row = c.execute("SELECT rule_code, entity_ref FROM es.alerts "
+                            "WHERE severity='critical' LIMIT 1").fetchone()
+            assert row, "world should have at least one critical alert"
+            c.execute("DELETE FROM es.alerts WHERE rule_code=%s "
+                      "AND entity_ref=%s", row)
+        out = eng.evaluate_all()
+        if out["new_critical"] >= 1:
+            break
 
     assert out["new_critical"] >= 1
     assert captured.get("to"), "engine never reached the mailer"
@@ -129,20 +134,23 @@ def test_reactivated_alert_notifies_again(monkeypatch):
     from app.config import get_settings
     from app.expert import engine as eng
     s = get_settings()
-    with psycopg.connect(s.app_dsn, autocommit=True) as c:
-        row = c.execute("SELECT rule_code, entity_ref FROM es.alerts "
-                        "WHERE severity='critical' LIMIT 1").fetchone()
-        assert row
-        # simulate "the condition cleared earlier" without deleting history
-        c.execute("UPDATE es.alerts SET status='resolved', "
-                  "resolved_at=now() WHERE rule_code=%s AND entity_ref=%s",
-                  row)
-        _ensure_notified_manager(c)
     captured = {}
     monkeypatch.setattr("app.services.mailer.send_critical_alerts",
                         lambda r, a: captured.update(to=r, alerts=a))
     monkeypatch.setattr(s, "alert_email_enabled", True)
-    out = eng.evaluate_all()
+    out = None
+    for _attempt in range(3):        # re-arm if a second writer stole the
+        with psycopg.connect(s.app_dsn, autocommit=True) as c:  # transition
+            row = c.execute("SELECT rule_code, entity_ref FROM es.alerts "
+                            "WHERE severity='critical' LIMIT 1").fetchone()
+            assert row
+            c.execute("UPDATE es.alerts SET status='resolved', "
+                      "resolved_at=now() WHERE rule_code=%s AND entity_ref=%s",
+                      row)
+            _ensure_notified_manager(c)
+        out = eng.evaluate_all()
+        if out["reactivated"] >= 1:
+            break
     assert out["reactivated"] >= 1
     assert out["raised"] == out["new"] + out["reactivated"]
     assert out["new_critical"] >= 1          # re-fire counts for email

@@ -115,3 +115,54 @@ def test_saved_synth_charts_are_reactive_like_any_other():
     ours = {c["chart_id"] for c in out["created"]} if out["created"] else set()
     assert ours & {c["chart_id"] for c in hit}
     app_repo.delete_dashboard(out["dashboard_id"])
+
+
+def test_zero_rate_views_are_dropped():
+    """0%% on every row of a 'rate' is integer-division or an empty window
+    — the gate refuses to ship it (chart-1 class from the field)."""
+    uid = _user()
+
+    def ask_zero(question, tier):
+        a = fake_ask(question, tier)
+        if not a.failed:
+            a.columns = ["quarter", "otd_rate_pct"]
+            a.rows = [["2026-Q1", 0], ["2026-Q2", 0.0], ["2026-Q3", "0"]]
+            a.chart = {"chart_type": "kpi", "title": "On-time rate",
+                       "value_field": "otd_rate_pct"}
+        return a
+
+    out = synthesize_dashboard("otd rate", uid,
+                               llm=FakePlanner(PLAN), ask_fn=ask_zero)
+    assert len(out["created"]) == 0
+    assert all("zero-valued rate" in f["reason"] for f in out["failed"][:2])
+    app_repo.delete_dashboard(out["dashboard_id"])
+
+
+def test_multi_entity_line_gets_color_field_auto_repaired():
+    """The spec grammar now offers color_field on lines, but chart validity
+    must not DEPEND on the model obeying prose: synthesis sets the entity
+    column deterministically when the model forgets (chart-5 class)."""
+    import psycopg
+
+    from app.config import get_settings
+    uid = _user()
+
+    def ask_line(question, tier):
+        a = fake_ask(question, tier)
+        if not a.failed:
+            a.columns = ["quarter", "tier", "cycle_days"]
+            a.rows = [["2025-Q1", "gold", 30], ["2025-Q1", "silver", 45],
+                      ["2025-Q2", "gold", 28], ["2025-Q2", "silver", 41]]
+            a.chart = {"chart_type": "line", "title": "Cycle by tier",
+                       "x_field": "quarter", "y_fields": ["cycle_days"]}
+        return a
+
+    out = synthesize_dashboard("cycle", uid,
+                               llm=FakePlanner(PLAN), ask_fn=ask_line)
+    assert out["created"], "line views should ship"
+    cid = out["created"][0]["chart_id"]
+    with psycopg.connect(get_settings().app_dsn) as c:
+        spec = c.execute("SELECT chart_spec FROM app.saved_charts "
+                         "WHERE chart_id=%s", (cid,)).fetchone()[0]
+    assert spec["color_field"] == "tier"
+    app_repo.delete_dashboard(out["dashboard_id"])

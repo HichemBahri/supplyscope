@@ -30,7 +30,10 @@ with actual_delivery_date IS NOT NULL.
 - Today's date is {current_date}.
 
 Database schema:
-{schema_doc}"""
+{schema_doc}
+Rates and percentages MUST use numeric division: \
+round(100.0 * sum((cond)::int) / NULLIF(count(*), 0), 1) — never \
+integer/integer, which silently truncates to 0.\n"""
 
 SQL_GENERATE_USER = """Business question: {question}"""
 
@@ -85,8 +88,9 @@ specifications:
 - {"chart_type":"bar","title":str,"x_field":str,"y_fields":[str,...],\
 "orientation":"v"|"h","stacked":bool} — categories vs numeric value(s); \
 use "h" when category labels are long; stacked for part-of-whole per category.
-- {"chart_type":"line","title":str,"x_field":str,"y_fields":[str,...]} \
-— evolution over time/ordered axis.
+- {"chart_type":"line","title":str,"x_field":str,"y_fields":[str,...],\
+"color_field":str|null} — evolution over time/ordered axis; color_field \
+draws ONE LINE PER ENTITY of that column.
 - {"chart_type":"pie","title":str,"label_field":str,"value_field":str} \
 — share of a whole, at most ~8 slices.
 - {"chart_type":"scatter","title":str,"x_field":str,"y_field":str,\
@@ -100,6 +104,12 @@ line, pie, or scatter — a bar of the measure by the identifier is better \
 than a table, even when other columns must be left out of the chart.
 - Choose "table" only when the user explicitly asks for a listing/details, \
 or when every column is text with nothing meaningful to measure.
+- MANDATORY: when the result has BOTH a time/ordered column AND an entity \
+column (supplier, category, country, tier...), the line spec MUST set \
+color_field to that entity column — a multi-entity time series drawn as \
+one line is invalid.
+- If a metric can be negative (e.g. delay where negative means EARLY), \
+the title MUST state the sign convention, e.g. "(+late / −early)".
 - Field names MUST be chosen from the result columns exactly as given.
 - Title: short, business-oriented, in the language of the question.
 - Output the JSON only. No commentary."""
@@ -118,9 +128,3 @@ CHART_FIX_USER = """Your previous specification was rejected:
 Return a corrected JSON specification (```json fence), using only the listed \
 result columns."""
 
-# (synthesis quality) For a trend of several entities over time,
-# ALWAYS set color_field to the entity column: one line per entity.
-# MANDATORY: if the SQL groups by BOTH a time column and an entity column
-# (supplier, category, country...), the line spec MUST set color_field to
-# that entity column. A multi-entity time series without color_field is
-# an invalid chart choice.

@@ -26,6 +26,13 @@ function col(columns: string[], rows: unknown[][], field?: string): unknown[] {
 }
 
 export function ChartRenderer({ spec, columns, rows, height = 300 }: Props) {
+  // dense categorical bars: grow the chart so every label renders —
+  // Plotly silently thins axis labels when rows outnumber the pixels
+  const isBar = spec.chart_type === "bar";
+  const dense = isBar && (spec.orientation === "h" || rows.length > 10);
+  const effHeight = dense
+    ? Math.max(height, Math.min(560, rows.length * 26 + 90))
+    : height;
   if (spec.chart_type === "kpi") return <Kpi spec={spec} columns={columns} rows={rows} />;
   if (spec.chart_type === "table") return <DataTable columns={columns} rows={rows} />;
 
@@ -99,7 +106,7 @@ export function ChartRenderer({ spec, columns, rows, height = 300 }: Props) {
     <Plot
       data={data as never}
       layout={{
-        height,
+        height: effHeight,
         margin: { l: 56, r: 16, t: 8, b: 44 },
         font: FONT,
         paper_bgcolor: "transparent",
@@ -109,7 +116,7 @@ export function ChartRenderer({ spec, columns, rows, height = 300 }: Props) {
         showlegend: (spec.y_fields?.length ?? 0) > 1 || spec.chart_type === "pie",
         legend: { orientation: "h", y: -0.2 },
         xaxis: { gridcolor: "#eef1f5", zerolinecolor: "#e2e8f0", automargin: true },
-        yaxis: { gridcolor: "#eef1f5", zerolinecolor: "#e2e8f0", automargin: true },
+        yaxis: { gridcolor: "#eef1f5", zerolinecolor: "#e2e8f0", automargin: true, tickfont: { size: 11 } },
         transition: { duration: 450, easing: "cubic-in-out" },
       } as never}
       config={{ displayModeBar: false, responsive: true } as never}

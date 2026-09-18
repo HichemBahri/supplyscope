@@ -51,6 +51,11 @@ DATA AWARENESS — the dataset is a 5-year history of a mid-size contractor
   keys; do not invent joins between erp prices and ml forecasts;
 - never combine two metrics of very different scales (e.g. a 0-100%
   rate with a near-zero variance) in ONE chart — one metric per view;
+- the supplier base is SMALL (about 17 active suppliers): never ask for
+  banded histograms or distributions OVER suppliers — the bands collapse
+  into one or two buckets; ask direct rankings instead;
+- any signed metric (delays that can be early, variances) must state the
+  sign convention inside the question so the chart title carries it;
 - a question whose answer would be a single entity's flat line is a bad
   view; prefer aggregations with guaranteed non-empty results.
 Good dashboards mix granularities: one headline KPI, one ranking or
@@ -102,12 +107,51 @@ def synthesize_dashboard(topic: str, user_id: int,
                 raise RuntimeError(a.answer or "agent could not answer")
             rows = getattr(a, "rows", None) or []
             cols = getattr(a, "columns", []) or []
+
+            def _metric_idx() -> int:
+                m = ((a.chart.get("y_fields") or [None])[0]
+                     or a.chart.get("value_field"))
+                return cols.index(m) if m in cols else len(cols) - 1
+
+            # degenerate-rate gate: a rate/percentage that is zero on every
+            # row is arithmetically suspect (integer division truncates to
+            # 0 in SQL) or an empty window — never ship it
+            rate_ctx = any(w in (q + " " + str(a.chart.get("title", ""))
+                                 ).lower()
+                           for w in ("rate", "percent", "%", "ratio",
+                                     "share"))
+            if rate_ctx and rows and cols:
+                mi = _metric_idx()
+
+                def _zero(v) -> bool:
+                    try:
+                        return float(v) == 0.0
+                    except (TypeError, ValueError):
+                        return False
+                if all(_zero(r[mi]) for r in rows):
+                    raise RuntimeError(
+                        "degenerate zero-valued rate — integer division "
+                        "or empty time window suspected; view dropped")
+
+            # auto-repair: a multi-entity line WITHOUT color_field gets the
+            # entity column set deterministically — we do not rely on the
+            # model obeying the prompt for chart validity
+            if (a.chart.get("chart_type") == "line"
+                    and not a.chart.get("color_field") and len(cols) >= 3
+                    and rows):
+                used = {a.chart.get("x_field")} | set(
+                    a.chart.get("y_fields") or [])
+                for ci, cname in enumerate(cols):
+                    if cname in used:
+                        continue
+                    if isinstance(rows[0][ci], str):
+                        a.chart["color_field"] = cname
+                        logger.info("synth auto-repair: color_field=%s "
+                                    "for %r", cname, q[:60])
+                        break
+
             if len(rows) > 2 and cols:
-                # the metric column is the chart's own y/value field;
-                # fall back to the last column (metrics conventionally last)
-                metric = ((a.chart.get("y_fields") or [None])[0]
-                          or a.chart.get("value_field"))
-                idx = cols.index(metric) if metric in cols else len(cols) - 1
+                idx = _metric_idx()
                 if len({str(r[idx]) for r in rows}) == 1:
                     raise RuntimeError(
                         "uninformative: metric is constant across all "
