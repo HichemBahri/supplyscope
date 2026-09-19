@@ -166,3 +166,30 @@ def test_multi_entity_line_gets_color_field_auto_repaired():
                          "WHERE chart_id=%s", (cid,)).fetchone()[0]
     assert spec["color_field"] == "tier"
     app_repo.delete_dashboard(out["dashboard_id"])
+
+
+def test_mixed_scale_series_is_dropped_from_bar():
+    """A 0-100%% series beside a 0-60M series is an invisible sliver; the
+    repair keeps only series that can share the axis (field evidence)."""
+    import psycopg
+
+    from app.config import get_settings
+    uid = _user()
+
+    def ask_mixed(question, tier):
+        a = fake_ask(question, tier)
+        if not a.failed:
+            a.columns = ["category", "spend_tnd", "pct_of_total"]
+            a.rows = [["steel", 52_000_000, 18.0], ["safety", 46_000_000, 16.0],
+                      ["piping", 14_000_000, 5.0]]
+            a.chart = {"chart_type": "bar", "title": "Spend", "x_field": "category",
+                       "y_fields": ["spend_tnd", "pct_of_total"]}
+        return a
+
+    out = synthesize_dashboard("spend", uid, llm=FakePlanner(PLAN), ask_fn=ask_mixed)
+    cid = out["created"][0]["chart_id"]
+    with psycopg.connect(get_settings().app_dsn) as c:
+        spec = c.execute("SELECT chart_spec FROM app.saved_charts WHERE chart_id=%s",
+                         (cid,)).fetchone()[0]
+    assert spec["y_fields"] == ["spend_tnd"]
+    app_repo.delete_dashboard(out["dashboard_id"])

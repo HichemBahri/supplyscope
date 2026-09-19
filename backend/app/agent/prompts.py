@@ -33,9 +33,13 @@ Database schema:
 {schema_doc}
 Time buckets MUST be year-first and sortable: to_char(d, 'YYYY-"Q"Q') or \
 to_char(d, 'YYYY-MM') — never 'Q1 2024'. \
-MONEY: erp.supplier_quotations.quoted_total and erp.purchase_orders.\
-total_amount carry their own currency (EUR/USD/TND) — any comparison or \
-sum across rows MUST normalize through erp.fx_rates (amount * rate_to_tnd). \
+MONEY: EVERY monetary column has a sibling currency column on the same \
+row (projects.contract_value/currency, tenders, supplier_quotations.\
+quoted_total, purchase_orders.total_amount, payments...) and values are \
+EUR, USD or TND. Any sum, comparison or subtraction of money MUST \
+normalize BOTH sides through erp.fx_rates (amount * rate_to_tnd) — \
+subtracting normalized spend from a nominal contract value is a classic \
+error that makes every project look over budget. \
 Quotation TOTALS are not comparable to PO LINE unit prices: compare like \
 grains only. \
 Rates and percentages MUST use numeric division: \

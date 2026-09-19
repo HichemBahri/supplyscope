@@ -152,6 +152,29 @@ def synthesize_dashboard(topic: str, user_id: int,
                                     "for %r", cname, q[:60])
                         break
 
+            # mixed-scale repair: a bar/line with several y_fields whose
+            # magnitudes differ by >100x cannot share one axis — the small
+            # series renders as an invisible sliver. Keep the dominant ones.
+            yf = a.chart.get("y_fields") or []
+            if a.chart.get("chart_type") in ("bar", "line") and len(yf) > 1 \
+                    and rows:
+                def _mx(f):
+                    i = cols.index(f) if f in cols else -1
+                    vals = []
+                    for r in rows:
+                        try:
+                            vals.append(abs(float(r[i])))
+                        except (TypeError, ValueError, IndexError):
+                            pass
+                    return max(vals) if vals else 0.0
+                tops = {f: _mx(f) for f in yf}
+                big = max(tops.values()) or 1.0
+                keep = [f for f in yf if tops[f] >= big / 100.0]
+                if keep and len(keep) < len(yf):
+                    logger.info("synth repair: dropped mixed-scale series %s",
+                                [f for f in yf if f not in keep])
+                    a.chart["y_fields"] = keep
+
             if len(rows) > 2 and cols:
                 idx = _metric_idx()
                 if len({str(r[idx]) for r in rows}) == 1:
