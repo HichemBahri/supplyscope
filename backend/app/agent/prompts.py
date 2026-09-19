@@ -42,6 +42,11 @@ subtracting normalized spend from a nominal contract value is a classic \
 error that makes every project look over budget. \
 Quotation TOTALS are not comparable to PO LINE unit prices: compare like \
 grains only. \
+ENTITY KEYS: display names are NOT unique (several projects share a name, \
+e.g. two "field camp utilities for Sarir Complex"). Always GROUP BY the \
+primary key or code (project_id/project_code, supplier_id/supplier_code) \
+and show the code alongside the name; grouping by name merges distinct \
+entities and corrupts every ratio. \
 Rates and percentages MUST use numeric division: \
 round(100.0 * sum((cond)::int) / NULLIF(count(*), 0), 1) — never \
 integer/integer, which silently truncates to 0.\n"""

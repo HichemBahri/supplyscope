@@ -56,6 +56,13 @@ DATA AWARENESS — the dataset is a 5-year history of a mid-size contractor
   into one or two buckets; ask direct rankings instead;
 - any signed metric (delays that can be early, variances) must state the
   sign convention inside the question so the chart title carries it;
+- SCHEMA GROUNDING: this is a purchasing/ERP schema with NO earned-value
+  or physical-progress data. NEVER ask for CPI, SPI, earned value, schedule
+  variance or any EVM metric — they cannot be computed and the agent will
+  invent a formula. Supported cost views are: committed PO spend vs
+  contract value (FX-normalized), budget utilisation %, projects over
+  budget, spend by category, delivered-but-unpaid amounts in TND, PO price
+  vs quoted price. Do not relabel a spend share as an "overrun".
 - a question whose answer would be a single entity's flat line is a bad
   view; prefer aggregations with guaranteed non-empty results.
 Good dashboards mix granularities: one headline KPI, one ranking or
@@ -174,6 +181,51 @@ def synthesize_dashboard(topic: str, user_id: int,
                     logger.info("synth repair: dropped mixed-scale series %s",
                                 [f for f in yf if f not in keep])
                     a.chart["y_fields"] = keep
+
+            ctx = (q + " " + str(a.chart.get("title", ""))).lower()
+
+            # (4) pie -> bar above 6 slices: pies stop being readable and
+            # labels pile up; a bar carries the same data legibly
+            if a.chart.get("chart_type") == "pie" and len(rows) > 6:
+                a.chart = {"chart_type": "bar",
+                           "title": a.chart.get("title", q[:80]),
+                           "x_field": a.chart.get("label_field"),
+                           "y_fields": [a.chart.get("value_field")],
+                           "orientation": "h", "stacked": False}
+                logger.info("synth repair: pie(%d) -> horizontal bar",
+                            len(rows))
+
+            if rows and cols:
+                mi = _metric_idx()
+                vals = []
+                for r in rows:
+                    try:
+                        vals.append(float(r[mi]))
+                    except (TypeError, ValueError):
+                        pass
+
+                # (2) money-magnitude gate: a metric named as an AMOUNT whose
+                # values all sit below 100 is not money — a units/ratio
+                # error dressed as currency (field case: exposure at 0.01)
+                money_ctx = any(w in ctx for w in (
+                    "amount", "spend", "exposure", "liability", "cost",
+                    "budget", "revenue", "tnd", "value", "price"))
+                ratio_ctx = any(w in ctx for w in (
+                    "rate", "percent", "%", "ratio", "share", "index",
+                    "variance", "count", "number"))
+                if (money_ctx and not ratio_ctx and vals
+                        and max(abs(v) for v in vals) < 100):
+                    raise RuntimeError(
+                        "implausible magnitude for a monetary metric "
+                        "(all values < 100) — units error suspected; "
+                        "view dropped")
+
+                # (3) near-constant gate: a ranking where almost everyone
+                # ties carries no information
+                if len(rows) >= 10 and len({str(r[mi]) for r in rows}) <= 2:
+                    raise RuntimeError(
+                        f"uninformative: at most 2 distinct values across "
+                        f"{len(rows)} rows — view dropped")
 
             if len(rows) > 2 and cols:
                 idx = _metric_idx()

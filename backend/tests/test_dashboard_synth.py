@@ -193,3 +193,78 @@ def test_mixed_scale_series_is_dropped_from_bar():
                          (cid,)).fetchone()[0]
     assert spec["y_fields"] == ["spend_tnd"]
     app_repo.delete_dashboard(out["dashboard_id"])
+
+
+def _spec_of(chart_id):
+    import psycopg
+
+    from app.config import get_settings
+    with psycopg.connect(get_settings().app_dsn) as c:
+        return c.execute("SELECT chart_spec FROM app.saved_charts "
+                         "WHERE chart_id=%s", (chart_id,)).fetchone()[0]
+
+
+MONEY_PLAN = json.dumps({
+    "title": "Cost control", "description": "money views",
+    "views": [
+        {"question": "Payment liability exposure by project in TND",
+         "kind": "ranking"},
+        {"question": "Delivered-but-unpaid amount by project", "kind": "ranking"},
+        {"question": "THIS ONE WILL FAIL", "kind": "trend"},
+    ],
+})
+
+
+def test_money_metric_with_tiny_values_is_dropped():
+    """'Payment liability exposure' at 0.01–0.03 is not money (field case)."""
+    uid = _user()
+
+    def ask(question, tier):
+        a = fake_ask(question, tier)
+        if not a.failed:
+            a.columns = ["project", "exposure_tnd"]
+            a.rows = [["p1", 0.01], ["p2", 0.01], ["p3", 0.03]]
+            a.chart = {"chart_type": "bar", "title": "Payment liability exposure",
+                       "x_field": "project", "y_fields": ["exposure_tnd"]}
+        return a
+    out = synthesize_dashboard("exposure", uid, llm=FakePlanner(MONEY_PLAN),
+                               ask_fn=ask)
+    assert not out["created"]
+    assert all("monetary" in f["reason"] for f in out["failed"][:2])
+    app_repo.delete_dashboard(out["dashboard_id"])
+
+
+def test_near_constant_ranking_is_dropped():
+    uid = _user()
+
+    def ask(question, tier):
+        a = fake_ask(question, tier)
+        if not a.failed:
+            a.columns = ["project", "n_unpaid"]
+            a.rows = [[f"p{i}", 1] for i in range(11)] + [["p99", 2]]
+            a.chart = {"chart_type": "bar", "title": "Unpaid count by project",
+                       "x_field": "project", "y_fields": ["n_unpaid"]}
+        return a
+    out = synthesize_dashboard("unpaid", uid, llm=FakePlanner(PLAN), ask_fn=ask)
+    assert not out["created"]
+    assert all("distinct values" in f["reason"] for f in out["failed"][:2])
+    app_repo.delete_dashboard(out["dashboard_id"])
+
+
+def test_pie_with_many_slices_becomes_horizontal_bar():
+    uid = _user()
+
+    def ask(question, tier):
+        a = fake_ask(question, tier)
+        if not a.failed:
+            a.columns = ["category", "spend_tnd"]
+            a.rows = [[f"cat{i}", 1_000_000 * (i + 1)] for i in range(9)]
+            a.chart = {"chart_type": "pie", "title": "Spend share",
+                       "label_field": "category", "value_field": "spend_tnd"}
+        return a
+    out = synthesize_dashboard("spend", uid, llm=FakePlanner(PLAN), ask_fn=ask)
+    assert out["created"]
+    spec = _spec_of(out["created"][0]["chart_id"])
+    assert spec["chart_type"] == "bar" and spec["orientation"] == "h"
+    assert spec["x_field"] == "category" and spec["y_fields"] == ["spend_tnd"]
+    app_repo.delete_dashboard(out["dashboard_id"])
