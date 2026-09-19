@@ -27,3 +27,4 @@ build/
 docs/_build/
 *:Zone.Identifier
 backend/ml_artifacts/
+backend/bench_results/*.json

@@ -47,6 +47,9 @@ train:  ## Train the delivery-risk model ladder and activate the winner
 demo-alerts:  ## jury demo: trip alert rules against the live stack
 	cd backend && uv run python -m scripts.demo_alerts
 
+bench-agent:  ## Phase 15: run the agent accuracy benchmark (real LLM calls; cached per question)
+	set -a && . ./.env && set +a && cd backend && uv run python -m scripts.bench_agent $(ARGS)
+
 bench-scale:  ## pandas-vs-Spark crossover benchmark (needs: uv sync --group bigdata + a JRE)
 	cd backend && uv run python -m scripts.bench_scale
 
