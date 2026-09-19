@@ -12,6 +12,9 @@ listed here so the methodology can be defended:
     truth row (name, code, year...) appears, case-insensitively, inside ANY
     cell of the agent row — the agent may show a code where we expect a
     name, and vice versa;
+  * a `count` answered as a breakdown (one numeric column, <= 10 rows) whose
+    parts sum EXACTLY to the expected total is accepted — the information
+    asked for is present, in a different shape;
   * numbers are only searched in the agent's FIRST 3 rows for scalar/count:
     a correct value buried in row 40 of an unrelated listing is not an
     answer.
@@ -104,6 +107,17 @@ def grade(kind: str, truth_rows: list[Sequence[Any]], agent_rows: list[Sequence[
                 for e in candidates:
                     if _close(cn, e, tol):
                         return Verdict(True, f"found {cn:g} ≈ {expected:g}")
+        if kind == "count" and 2 <= len(agent_rows) <= 10:
+            # a count delivered as a BREAKDOWN (e.g. per status) whose single
+            # numeric column sums exactly to the expected total is a correct
+            # answer in a different shape — accepted, and bounded tightly:
+            # one numeric column, at most 10 rows, exact integer sum
+            num_cols = [i for i in range(len(agent_rows[0]))
+                        if all(_num(r[i]) is not None for r in agent_rows if i < len(r))]
+            if len(num_cols) == 1:
+                total = sum(_num(r[num_cols[0]]) for r in agent_rows)
+                if _close(total, expected, 1e-9):
+                    return Verdict(True, f"breakdown of {len(agent_rows)} rows sums to {expected:g}")
         got = [c for row in agent_rows[:3] for c in row if _num(c) is not None][:6]
         return Verdict(False, f"expected {expected:g}, numeric cells seen {got}")
 

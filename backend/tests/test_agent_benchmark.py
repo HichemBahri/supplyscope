@@ -182,3 +182,67 @@ def test_harness_plugs_into_real_graph(tmp_path):
     assert s["overall"]["correct"] == 1
     assert s["overall"]["rescued"] == 1          # the typo was self-corrected
     assert s["self_correction"]["rescue_rate"] == 100.0
+
+
+def test_grader_accepts_count_as_exact_breakdown():
+    """Field case (M08): 'how many open POs' answered per status 2+1+1."""
+    assert grade("count", [[4]], [["issued", 2], ["confirmed", 1], ["partial", 1]]).correct
+    assert not grade("count", [[4]], [["issued", 2], ["confirmed", 1]]).correct   # sums to 3
+    assert not grade("count", [[4]], [["a", 2, 9], ["b", 2, 9]]).correct          # two numeric cols
+    assert not grade("count", [[4]], [[1]] * 20).correct                          # too many rows
+
+
+def test_force_with_only_keeps_other_cached_records(tmp_path):
+    """Regression: --force --only X used to wipe every other cached answer,
+    silently re-billing the whole benchmark on the next run."""
+    run("fast", only={"E01", "E02", "E03"}, out=tmp_path, ask_fn=_oracle, chart=False)
+    calls = {"n": 0}
+
+    def counting(question, tier):
+        calls["n"] += 1
+        return _oracle(question, tier)
+
+    run("fast", only={"E01"}, out=tmp_path, ask_fn=counting, force=True, chart=False)
+    assert calls["n"] == 1
+    cached = {r["qid"] for r in json.loads((tmp_path / "agent_bench_fast.json").read_text())}
+    assert cached == {"E01", "E02", "E03"}
+
+
+def test_regrade_and_show_without_llm(tmp_path, capsys):
+    run("fast", only={"E01", "E02"}, out=tmp_path, ask_fn=_oracle, chart=False)
+
+    def must_not_run(question, tier):
+        raise AssertionError("regrade must not call the LLM")
+
+    s = run("fast", only={"E01", "E02"}, out=tmp_path, ask_fn=must_not_run,
+            regrade=True, chart=False)
+    assert s["overall"]["accuracy"] == 100.0
+    from scripts.bench_agent import show
+    show("fast", {"E01"}, tmp_path)
+    out = capsys.readouterr().out
+    assert "E01" in out and "SELECT" in out and "truth:" in out
+
+
+def test_aggregate_over_runs_reports_stability(tmp_path):
+    from scripts.bench_agent import aggregate
+
+    def flaky(question, tier):
+        a = _oracle(question, tier)
+        if a.question == BY_ID["H01"].question and flaky.run == 2:
+            a.rows = [[9.99]]                      # wrong only in run 2
+        if a.question == BY_ID["M15"].question:
+            a.rows = [[1]]                         # wrong in every run
+        return a
+    flaky.run = 1
+    run("fast", out=tmp_path, ask_fn=flaky, chart=False, run_id=1)
+    flaky.run = 2
+    run("fast", out=tmp_path, ask_fn=flaky, chart=False, run_id=2)
+    r = aggregate(tmp_path, tiers=("fast",), chart=True)
+    f = r["fast"]
+    assert f["runs"] == 2
+    assert f["always_wrong"] == ["M15"] and f["unstable"] == ["H01"]
+    n = len(QUESTIONS)
+    assert f["accuracy"]["overall"]["max"] == round(100 * (n - 1) / n, 1)
+    assert f["accuracy"]["overall"]["min"] == round(100 * (n - 2) / n, 1)
+    assert (tmp_path / "agent_bench_aggregate.png").stat().st_size > 5000
+    assert (tmp_path / "agent_bench_aggregate.md").exists()

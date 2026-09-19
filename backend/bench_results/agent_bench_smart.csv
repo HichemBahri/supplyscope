@@ -34,7 +34,7 @@ M04,medium,logistics,count,How many shipments were delivered late during 2025?,f
 M05,medium,logistics,scalar,What was the average number of days shipments to Libya spent in customs during the first quarter of 2025?,first_try,True,0,6961.6,found 30.36 ≈ 30.4
 M06,medium,procurement,top1,Which material category has the highest total purchase order line value?,first_try,True,0,6293.1,first row names the expected entity
 M07,medium,finance,top1,"Which project has the highest ratio of committed purchase order spend to contract value, with both normalized to TND?",first_try,True,0,10360.2,first row names the expected entity
-M08,medium,procurement,count,"How many purchase orders are still open (issued, confirmed or partially delivered)?",wrong,False,0,5139.1,"expected 4, numeric cells seen [2, 1, 1]"
+M08,medium,procurement,count,"How many purchase orders are still open (issued, confirmed or partially delivered)?",first_try,True,0,5139.1,breakdown of 3 rows sums to 4
 M09,medium,logistics,scalar,"What is the overall on-time delivery rate across all delivered shipments, as a percentage?",first_try,True,0,8195.3,found 76.96 ≈ 77
 M10,medium,tendering,top1,Which client has the most projects?,first_try,True,0,5840.4,first row names the expected entity
 M11,medium,logistics,scalar,"What is the total freight cost in TND of all shipments bound for Libya, whatever their current status?",first_try,True,0,8150.4,found 7.96249e+06 ≈ 7.96249e+06

@@ -188,22 +188,61 @@ def _plot(s: dict[str, Any], path: Path, llm_tier: str) -> None:
     plt.close(fig)
 
 
+def _cache_path(out: Path, llm_tier: str, run_id: int) -> Path:
+    # run 1 keeps the historical filename; further runs get a suffix
+    return out / (f"agent_bench_{llm_tier}.json" if run_id == 1
+                  else f"agent_bench_{llm_tier}_run{run_id}.json")
+
+
+def _regrade(q: BenchQuestion, r: dict[str, Any]) -> dict[str, Any]:
+    """Re-apply the grader to a cached answer (grader or truth may have
+    changed; the LLM answer is kept, so this costs nothing)."""
+    if r.get("failed"):
+        return r
+    truth = truth_rows(q)
+    v = grade(q.kind, truth, [list(x) for x in r.get("rows", [])], q.tolerance)
+    r = dict(r, correct=bool(v.correct), reason=v.reason,
+             truth=[[_jsonable(c) for c in t] for t in truth[:10]])
+    r["outcome"] = ("rescued" if v.correct and r["failed_attempts"] > 0 else
+                    "first_try" if v.correct else "wrong")
+    return r
+
+
+def show(llm_tier: str, qids: set[str], out: Path = Path("bench_results"),
+         run_id: int = 1) -> None:
+    """Print the agent's SQL, columns, first rows and the truth for qids."""
+    p = _cache_path(out, llm_tier, run_id)
+    recs = {r["qid"]: r for r in json.loads(p.read_text())} if p.exists() else {}
+    for qid in sorted(qids):
+        r = recs.get(qid)
+        if not r:
+            print(f"--- {qid}: not in cache"); continue
+        print(f"--- {qid} [{r['outcome']}] {r['question']}\n{r['sql']}\n"
+              f"columns: {r['columns']}\nrows: {r['rows'][:5]}\ntruth: {r['truth'][:5]}\n")
+
+
 def run(llm_tier: str = "fast", only: set[str] | None = None, limit: int | None = None,
         force: bool = False, out: Path = Path("bench_results"),
-        ask_fn: Callable | None = None, chart: bool = True) -> dict[str, Any]:
+        ask_fn: Callable | None = None, chart: bool = True, run_id: int = 1,
+        regrade: bool = False) -> dict[str, Any]:
     if ask_fn is None:
         from app.agent.runner import ask
         ask_fn = ask
     out.mkdir(parents=True, exist_ok=True)
-    cache_path = out / f"agent_bench_{llm_tier}.json"
+    cache_path = _cache_path(out, llm_tier, run_id)
     cache: dict[str, dict] = {}
-    if cache_path.exists() and not force:
+    if cache_path.exists():                      # ALWAYS load: --force only
         cache = {r["qid"]: r for r in json.loads(cache_path.read_text())}
     todo = [q for q in QUESTIONS if (only is None or q.qid in only)]
     if limit:
         todo = todo[:limit]
+    if regrade:                                  # re-grade cached rows, no LLM
+        for q in todo:
+            if q.qid in cache:
+                cache[q.qid] = _regrade(q, cache[q.qid])
+        cache_path.write_text(json.dumps(list(cache.values()), indent=1))
     for q in todo:
-        if q.qid in cache and not force:
+        if q.qid in cache and not (force and not regrade):
             r = cache[q.qid]
             print(f"  {q.qid} (cached)  {r['outcome']:9s} {r['reason']}")
             continue
@@ -212,13 +251,98 @@ def run(llm_tier: str = "fast", only: set[str] | None = None, limit: int | None 
         cache_path.write_text(json.dumps(list(cache.values()), indent=1))   # resumable
         print(f"  {q.qid} {r['duration_ms']:>7.0f}ms  {r['outcome']:9s} {r['reason']}")
     records = [cache[q.qid] for q in todo if q.qid in cache]
-    s = write_reports(records, out, llm_tier, chart=chart)
+    s = write_reports(records, out, llm_tier if run_id == 1 else f"{llm_tier}_run{run_id}",
+                      chart=chart)
     o = s["overall"]
     print(f"\nOverall {o['accuracy']}% ({o['correct']}/{o['n']}) — "
           + " · ".join(f"{t} {s['by_tier'][t]['accuracy']}%" for t in TIERS)
           + f" — rescue rate {s['self_correction']['rescue_rate']}%")
     print(f"reports: {out / f'agent_bench_{llm_tier}'}.{{json,csv,md,png}}")
     return s
+
+
+def aggregate(out: Path = Path("bench_results"), tiers: tuple[str, ...] = ("fast", "smart"),
+              chart: bool = True) -> dict[str, Any]:
+    """Combine every available run per model tier: accuracy mean / min / max
+    per difficulty tier, and per-question stability (fraction of runs
+    correct) — the honest way to report a nondeterministic system."""
+    result: dict[str, Any] = {}
+    lines = ["# Agent benchmark — aggregate over runs", ""]
+    for tier in tiers:
+        runs = []
+        for p in sorted(out.glob(f"agent_bench_{tier}*.json")):
+            if "_run" in p.stem or p.stem == f"agent_bench_{tier}":
+                recs = json.loads(p.read_text())
+                if len(recs) >= len(QUESTIONS) * 0.9:        # complete runs only
+                    runs.append({r["qid"]: r for r in recs})
+        if not runs:
+            continue
+        per_q = {q.qid: sum(1 for run in runs if run.get(q.qid, {}).get("correct"))
+                 for q in QUESTIONS}
+        accs = {t: [] for t in ("overall", *TIERS)}
+        for run in runs:
+            recs = list(run.values())
+            accs["overall"].append(100 * sum(r["correct"] for r in recs) / len(recs))
+            for t in TIERS:
+                rs = [r for r in recs if r["tier"] == t]
+                accs[t].append(100 * sum(r["correct"] for r in rs) / len(rs))
+        lat = sorted(r["duration_ms"] for run in runs for r in run.values())
+        stats = {k: {"mean": round(sum(v) / len(v), 1), "min": round(min(v), 1),
+                     "max": round(max(v), 1)} for k, v in accs.items()}
+        unstable = sorted(q for q, c in per_q.items() if 0 < c < len(runs))
+        always_wrong = sorted(q for q, c in per_q.items() if c == 0)
+        result[tier] = {"runs": len(runs), "accuracy": stats,
+                        "median_ms": lat[len(lat) // 2],
+                        "unstable": unstable, "always_wrong": always_wrong,
+                        "per_question": per_q}
+        lines += [f"## `{tier}` — {len(runs)} run(s), median latency {lat[len(lat)//2]:.0f} ms", "",
+                  "| scope | mean | min | max |", "|---|---|---|---|"]
+        for k in ("overall", *TIERS):
+            lines.append(f"| {k} | {stats[k]['mean']}% | {stats[k]['min']}% | {stats[k]['max']}% |")
+        lines += ["", f"Always wrong (all runs): {', '.join(always_wrong) or '—'}",
+                  f"Unstable (correct in some runs only): {', '.join(unstable) or '—'}", ""]
+    (out / "agent_bench_aggregate.md").write_text("\n".join(lines) + "\n")
+    if chart and result:
+        _plot_aggregate(result, out / "agent_bench_aggregate.png")
+    return result
+
+
+def _plot_aggregate(result: dict[str, Any], path: Path) -> None:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    scopes = ["overall", *TIERS]
+    tiers = [t for t in ("fast", "smart") if t in result]
+    colors = {"fast": NAVY, "smart": ACTION}
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    w = 0.36
+    for i, tier in enumerate(tiers):
+        st = result[tier]["accuracy"]
+        means = [st[s]["mean"] for s in scopes]
+        lo = [st[s]["mean"] - st[s]["min"] for s in scopes]
+        hi = [st[s]["max"] - st[s]["mean"] for s in scopes]
+        xs = [k + (i - (len(tiers) - 1) / 2) * w for k in range(len(scopes))]
+        ax.bar(xs, means, width=w - 0.04, color=colors[tier], edgecolor="white",
+               linewidth=2, label=f"{tier} model ({result[tier]['runs']} runs)")
+        ax.errorbar(xs, means, yerr=[lo, hi], fmt="none", ecolor="#334155",
+                    elinewidth=1.2, capsize=4)
+        for x, m, h in zip(xs, means, hi):
+            ax.text(x, m + h + 2.5, f"{m:.0f}", ha="center", fontsize=9, color="#334155")
+    ax.set_xticks(range(len(scopes)))
+    ax.set_xticklabels([s.capitalize() for s in scopes])
+    ax.set_ylim(0, 115)
+    ax.set_ylabel("accuracy (%)")
+    ax.set_title("Agent accuracy by difficulty tier — mean over runs, min–max whiskers",
+                 loc="left")
+    for sp in ("top", "right"):
+        ax.spines[sp].set_visible(False)
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2,
+              frameon=False, fontsize=9)
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
 
 
 if __name__ == "__main__":
@@ -229,6 +353,21 @@ if __name__ == "__main__":
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--out", default="bench_results")
     ap.add_argument("--no-chart", action="store_true")
+    ap.add_argument("--run", type=int, default=1, help="run index (1 = default cache)")
+    ap.add_argument("--regrade", action="store_true",
+                    help="re-grade cached answers with the current grader/truth (no LLM)")
+    ap.add_argument("--show", default=None, help="print cached SQL/rows/truth for qids")
+    ap.add_argument("--aggregate", action="store_true",
+                    help="combine all runs per tier: mean/min/max + stability")
     a = ap.parse_args()
-    run(a.llm_tier, set(a.only.split(",")) if a.only else None, a.limit, a.force,
-        Path(a.out), chart=not a.no_chart)
+    if a.show:
+        show(a.llm_tier, set(a.show.split(",")), Path(a.out), a.run)
+    elif a.aggregate:
+        r = aggregate(Path(a.out), chart=not a.no_chart)
+        for t, v in r.items():
+            print(f"{t}: {v['runs']} runs, overall {v['accuracy']['overall']} | "
+                  f"always wrong {v['always_wrong']} | unstable {v['unstable']}")
+        print(f"reports: {Path(a.out) / 'agent_bench_aggregate'}.{{md,png}}")
+    else:
+        run(a.llm_tier, set(a.only.split(",")) if a.only else None, a.limit, a.force,
+            Path(a.out), chart=not a.no_chart, run_id=a.run, regrade=a.regrade)
