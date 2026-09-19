@@ -161,10 +161,12 @@ QUESTIONS: list[BenchQuestion] = [
                   "SELECT c.name, count(*) AS n FROM erp.projects p JOIN erp.clients c USING (client_id) "
                   "GROUP BY c.name ORDER BY n DESC, c.name LIMIT 1", "top1"),
     BenchQuestion("M11", "medium", "logistics",
-                  "What is the total freight cost in TND of all shipments delivered to Libya?",
+                  "What is the total freight cost in TND of all shipments bound for Libya, "
+                  "whatever their current status?",
                   "SELECT round(sum(s.freight_cost*f.rate_to_tnd)::numeric,0) FROM erp.shipments s "
                   "JOIN erp.sites st ON st.site_id=s.destination_site_id "
-                  "JOIN erp.fx_rates f ON f.currency=s.currency WHERE st.country='Libye'", "scalar"),
+                  "JOIN erp.fx_rates f ON f.currency=s.currency WHERE st.country='Libye'", "scalar",
+                  notes="AUDIT v1: 'delivered to Libya' was read as status='delivered' (defensible); reworded"),
     BenchQuestion("M12", "medium", "procurement",
                   "How many supplier quotations scored below the technical evaluation threshold of 70?",
                   "SELECT count(*) FROM erp.supplier_quotations WHERE tbe_score < 70", "count"),
@@ -181,9 +183,11 @@ QUESTIONS: list[BenchQuestion] = [
                   "WHERE q.tbe_score IS NOT NULL GROUP BY sup.name, sup.supplier_code "
                   "HAVING count(*) >= 10 ORDER BY t DESC LIMIT 1", "top1"),
     BenchQuestion("M15", "medium", "finance",
-                  "How many payments are currently overdue?",
+                  "How many payments are still unpaid and past their due date as of today?",
                   "SELECT count(*) FROM erp.payments WHERE paid_date IS NULL AND due_date < CURRENT_DATE",
-                  "count", notes="status column also says 'overdue'; both definitions agree"),
+                  "count", notes="AUDIT v1: asked 'currently overdue'; agent used the status flag "
+                        "(1), truth used the clock (15) — the flag is a frozen-world snapshot. "
+                        "Reworded to the clock definition."),
 
     # ------------------------------------------------------------ HARD
     BenchQuestion("H01", "hard", "procurement",
@@ -199,9 +203,9 @@ QUESTIONS: list[BenchQuestion] = [
                   "SELECT supplier_name, shipment_ref, probability FROM ml.delivery_risk "
                   "ORDER BY probability DESC LIMIT 1", "top1", tags=("ml",)),
     BenchQuestion("H03", "hard", "expert",
-                  "How many critical alerts are currently active (not resolved)?",
+                  "How many critical alerts are unresolved, counting both active and acknowledged ones?",
                   "SELECT count(*) FROM es.alerts WHERE severity='critical' AND status<>'resolved'",
-                  "count", tags=("expert",)),
+                  "count", notes="AUDIT v1: 'currently active' collided with enum 'active'; acknowledged alerts excluded", tags=("expert",)),
     BenchQuestion("H04", "hard", "logistics",
                   "Which calendar year had the lowest on-time delivery rate?",
                   "SELECT extract(year FROM s.actual_delivery_date)::int AS y, "
@@ -244,12 +248,14 @@ QUESTIONS: list[BenchQuestion] = [
                   "WHERE category='steel' AND kind='forecast' ORDER BY month LIMIT 1",
                   "scalar", tolerance=0.02, tags=("ml",)),
     BenchQuestion("H10", "hard", "finance",
-                  "Which supplier has the largest total amount of overdue payments in TND?",
+                  "Which supplier has the largest total value in TND of payments that are still "
+                  "unpaid and past their due date as of today?",
                   "SELECT sup.name, sup.supplier_code, round(sum(pay.amount*f.rate_to_tnd)::numeric,0) AS v "
                   "FROM erp.payments pay JOIN erp.purchase_orders po USING (po_id) "
                   "JOIN erp.suppliers sup USING (supplier_id) JOIN erp.fx_rates f ON f.currency=pay.currency "
                   "WHERE pay.paid_date IS NULL AND pay.due_date < CURRENT_DATE "
-                  "GROUP BY sup.name, sup.supplier_code ORDER BY v DESC LIMIT 1", "top1"),
+                  "GROUP BY sup.name, sup.supplier_code ORDER BY v DESC LIMIT 1", "top1",
+                  notes="AUDIT v1: status-flag vs clock ambiguity, same root as M15"),
     BenchQuestion("H11", "hard", "logistics",
                   "What is the on-time delivery rate, as a percentage, for shipments from "
                   "foreign (non-Tunisian) suppliers?",
@@ -263,11 +269,11 @@ QUESTIONS: list[BenchQuestion] = [
                   "JOIN erp.fx_rates f ON f.currency=me.currency GROUP BY a.category "
                   "ORDER BY v DESC LIMIT 1", "top1"),
     BenchQuestion("H13", "hard", "expert",
-                  "Which suppliers are currently flagged by the expert system for low "
-                  "on-time delivery? List them.",
+                  "Which suppliers have an unresolved expert-system alert (active or acknowledged) "
+                  "for low on-time delivery? List them.",
                   "SELECT sup.name, a.entity_ref FROM es.alerts a JOIN erp.suppliers sup "
                   "ON sup.supplier_code=a.entity_ref WHERE a.rule_code='SUPPLIER_LOW_OTD' "
-                  "AND a.status<>'resolved' ORDER BY sup.name", "set",
+                  "AND a.status<>'resolved' ORDER BY sup.name", "set", notes="AUDIT v1: 'currently flagged' -> status='active'; acknowledged alert dropped",
                   tags=("expert", "story")),
     BenchQuestion("H14", "hard", "tendering",
                   "What is the total value in TND of proposals we won during 2025?",

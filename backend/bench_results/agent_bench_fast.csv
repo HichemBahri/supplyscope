@@ -1,44 +1,44 @@
 qid,tier,topic,kind,question,outcome,correct,failed_attempts,duration_ms,reason
-E01,easy,procurement,count,How many active suppliers do we have?,first_try,True,0,4849.7,found 18 ≈ 18
-E02,easy,procurement,count,How many purchase orders have been issued in total?,first_try,True,0,2855.4,found 361 ≈ 361
-E03,easy,tendering,count,How many projects are currently active?,first_try,True,0,2415.6,found 20 ≈ 20
-E04,easy,procurement,top1,Which country has the most suppliers?,first_try,True,0,2749.6,first row names the expected entity
-E05,easy,logistics,count,How many shipments are currently on customs hold?,first_try,True,0,2997.4,found 2 ≈ 2
-E06,easy,tendering,count,How many tenders have been awarded?,first_try,True,0,2834.3,found 185 ≈ 185
-E07,easy,procurement,scalar,What is the average payment terms in days across active suppliers?,first_try,True,0,3049.3,found 64.17 ≈ 64.17
-E08,easy,procurement,count,How many distinct material categories do we purchase?,first_try,True,0,2806.6,found 9 ≈ 9
-E09,easy,assets,count,How many assets are currently under maintenance?,first_try,True,0,2662.3,found 5 ≈ 5
-E10,easy,logistics,count,How many goods receipts were rejected at quality control?,first_try,True,0,2752.1,found 15 ≈ 15
-E11,easy,tendering,count,How many clients are active?,first_try,True,0,2670.0,found 12 ≈ 12
-E12,easy,procurement,count,How many RFQs were cancelled?,first_try,True,0,2932.4,found 9 ≈ 9
-E13,easy,logistics,set,In which countries do we have sites?,first_try,True,0,2741.3,exact set
-E14,easy,procurement,scalar,What is the average quoted lead time in days across all supplier quotations?,first_try,True,0,2758.5,found 47.52 ≈ 47.52
-H01,hard,procurement,scalar,What was the average steel price index (purchase order unit price divided by the material's reference unit price) during the first half of 2025?,first_try,True,0,3668.5,found 1.49 ≈ 1.495
-H02,hard,ml,top1,Which supplier's open shipment currently has the highest predicted late-delivery probability according to the ML model?,first_try,True,0,3528.9,first row names the expected entity
-H03,hard,expert,count,How many critical alerts are currently active (not resolved)?,wrong,False,0,6340.1,"expected 4, numeric cells seen [0]"
-H04,hard,logistics,top1,Which calendar year had the lowest on-time delivery rate?,first_try,True,0,4025.1,first row names the expected entity
-H05,hard,finance,count,"How many projects have committed purchase order spend above 90% of their contract value, with both normalized to TND?",first_try,True,0,4927.2,found 1 ≈ 1
-H06,hard,logistics,top1,"Which supplier country has the highest average delivery delay in days (late shipments counted by their days late, on-time as zero)?",rescued,True,1,5945.7,first row names the expected entity
-H07,hard,procurement,scalar,What percentage of total purchase order value in TND goes to our single largest supplier?,first_try,True,0,5515.9,found 12.87 ≈ 12.9
-H08,hard,logistics,count,How many shipments spent more than 20 days in customs?,first_try,True,0,2820.9,found 33 ≈ 33
-H09,hard,ml,scalar,What is the forecasted steel price index for the next forecast month?,first_try,True,0,3294.9,found 1.8093 ≈ 1.809
-H10,hard,finance,top1,Which supplier has the largest total amount of overdue payments in TND?,wrong,False,0,3882.1,expected entity is absent
-H11,hard,logistics,scalar,"What is the on-time delivery rate, as a percentage, for shipments from foreign (non-Tunisian) suppliers?",first_try,True,0,3518.3,found 71.65 ≈ 71.6
-H12,hard,assets,top1,Which asset category has the highest total maintenance cost in TND?,first_try,True,0,3709.6,first row names the expected entity
-H13,hard,expert,set,Which suppliers are currently flagged by the expert system for low on-time delivery? List them.,wrong,False,0,5422.9,"expected 3 rows, got 2"
-H14,hard,tendering,scalar,What is the total value in TND of proposals we won during 2025?,first_try,True,0,3831.3,found 7.01095e+07 ≈ 7.01095e+07
-M01,medium,logistics,top1,"Which supplier has the worst on-time delivery rate, considering only suppliers with at least 5 completed deliveries?",first_try,True,0,4412.8,first row names the expected entity
-M02,medium,logistics,top1,"Which supplier has the best on-time delivery rate, considering only suppliers with at least 5 completed deliveries?",first_try,True,0,4926.3,first row names the expected entity
-M03,medium,procurement,ordered,Who are the top 3 suppliers by total purchase order value in TND?,first_try,True,0,5267.5,top 3 in order
-M04,medium,logistics,count,How many shipments were delivered late during 2025?,first_try,True,0,3361.3,found 34 ≈ 34
-M05,medium,logistics,scalar,What was the average number of days shipments to Libya spent in customs during the first quarter of 2025?,rescued,True,1,6228.5,found 30.36 ≈ 30.4
-M06,medium,procurement,top1,Which material category has the highest total purchase order line value?,first_try,True,0,3470.0,first row names the expected entity
-M07,medium,finance,top1,"Which project has the highest ratio of committed purchase order spend to contract value, with both normalized to TND?",first_try,True,0,5192.4,first row names the expected entity
-M08,medium,procurement,count,"How many purchase orders are still open (issued, confirmed or partially delivered)?",first_try,True,0,3394.0,found 4 ≈ 4
-M09,medium,logistics,scalar,"What is the overall on-time delivery rate across all delivered shipments, as a percentage?",first_try,True,0,3296.7,found 76.96 ≈ 77
-M10,medium,tendering,top1,Which client has the most projects?,first_try,True,0,3443.7,first row names the expected entity
-M11,medium,logistics,scalar,What is the total freight cost in TND of all shipments delivered to Libya?,wrong,False,0,3447.4,"expected 7.96249e+06, numeric cells seen [Decimal('7764090.68')]"
-M12,medium,procurement,count,How many supplier quotations scored below the technical evaluation threshold of 70?,first_try,True,0,3409.1,found 184 ≈ 184
-M13,medium,procurement,top1,Which supplier submitted the most quotations?,first_try,True,0,3165.5,first row names the expected entity
-M14,medium,procurement,top1,"Which supplier has the highest average technical evaluation (TBE) score, considering suppliers with at least 10 quotations?",first_try,True,0,7597.4,first row names the expected entity
-M15,medium,finance,count,How many payments are currently overdue?,wrong,False,0,2884.1,"expected 15, numeric cells seen [1]"
+E01,easy,procurement,count,How many active suppliers do we have?,first_try,True,0,3652.6,found 18 ≈ 18
+E02,easy,procurement,count,How many purchase orders have been issued in total?,first_try,True,0,2511.0,found 361 ≈ 361
+E03,easy,tendering,count,How many projects are currently active?,first_try,True,0,2335.6,found 20 ≈ 20
+E04,easy,procurement,top1,Which country has the most suppliers?,first_try,True,0,2485.5,first row names the expected entity
+E05,easy,logistics,count,How many shipments are currently on customs hold?,first_try,True,0,2607.4,found 2 ≈ 2
+E06,easy,tendering,count,How many tenders have been awarded?,first_try,True,0,2884.3,found 185 ≈ 185
+E07,easy,procurement,scalar,What is the average payment terms in days across active suppliers?,first_try,True,0,2814.5,found 64.17 ≈ 64.17
+E08,easy,procurement,count,How many distinct material categories do we purchase?,first_try,True,0,2765.6,found 9 ≈ 9
+E09,easy,assets,count,How many assets are currently under maintenance?,first_try,True,0,2318.0,found 5 ≈ 5
+E10,easy,logistics,count,How many goods receipts were rejected at quality control?,first_try,True,0,2968.5,found 15 ≈ 15
+E11,easy,tendering,count,How many clients are active?,first_try,True,0,2548.7,found 12 ≈ 12
+E12,easy,procurement,count,How many RFQs were cancelled?,first_try,True,0,2438.7,found 9 ≈ 9
+E13,easy,logistics,set,In which countries do we have sites?,first_try,True,0,3445.1,exact set
+E14,easy,procurement,scalar,What is the average quoted lead time in days across all supplier quotations?,first_try,True,0,2859.8,found 47.52 ≈ 47.52
+H01,hard,procurement,scalar,What was the average steel price index (purchase order unit price divided by the material's reference unit price) during the first half of 2025?,first_try,True,0,3875.8,found 1.49 ≈ 1.495
+H02,hard,ml,top1,Which supplier's open shipment currently has the highest predicted late-delivery probability according to the ML model?,first_try,True,0,3303.8,first row names the expected entity
+H03,hard,expert,count,"How many critical alerts are unresolved, counting both active and acknowledged ones?",first_try,True,0,5684.9,found 4 ≈ 4
+H04,hard,logistics,top1,Which calendar year had the lowest on-time delivery rate?,first_try,True,0,4146.5,first row names the expected entity
+H05,hard,finance,count,"How many projects have committed purchase order spend above 90% of their contract value, with both normalized to TND?",first_try,True,0,5296.4,found 1 ≈ 1
+H06,hard,logistics,top1,"Which supplier country has the highest average delivery delay in days (late shipments counted by their days late, on-time as zero)?",rescued,True,1,4576.9,first row names the expected entity
+H07,hard,procurement,scalar,What percentage of total purchase order value in TND goes to our single largest supplier?,first_try,True,0,4750.8,found 12.87 ≈ 12.9
+H08,hard,logistics,count,How many shipments spent more than 20 days in customs?,first_try,True,0,2777.8,found 33 ≈ 33
+H09,hard,ml,scalar,What is the forecasted steel price index for the next forecast month?,first_try,True,0,2798.3,found 1.8093 ≈ 1.809
+H10,hard,finance,top1,Which supplier has the largest total value in TND of payments that are still unpaid and past their due date as of today?,wrong,False,0,4301.8,expected entity is absent
+H11,hard,logistics,scalar,"What is the on-time delivery rate, as a percentage, for shipments from foreign (non-Tunisian) suppliers?",first_try,True,0,3179.7,found 71.65 ≈ 71.6
+H12,hard,assets,top1,Which asset category has the highest total maintenance cost in TND?,first_try,True,0,2975.0,first row names the expected entity
+H13,hard,expert,set,Which suppliers have an unresolved expert-system alert (active or acknowledged) for low on-time delivery? List them.,first_try,True,0,3609.0,exact set
+H14,hard,tendering,scalar,What is the total value in TND of proposals we won during 2025?,first_try,True,0,3104.5,found 7.01095e+07 ≈ 7.01095e+07
+M01,medium,logistics,top1,"Which supplier has the worst on-time delivery rate, considering only suppliers with at least 5 completed deliveries?",first_try,True,0,4133.2,first row names the expected entity
+M02,medium,logistics,top1,"Which supplier has the best on-time delivery rate, considering only suppliers with at least 5 completed deliveries?",first_try,True,0,4358.2,first row names the expected entity
+M03,medium,procurement,ordered,Who are the top 3 suppliers by total purchase order value in TND?,first_try,True,0,3372.8,top 3 in order
+M04,medium,logistics,count,How many shipments were delivered late during 2025?,first_try,True,0,3070.6,found 34 ≈ 34
+M05,medium,logistics,scalar,What was the average number of days shipments to Libya spent in customs during the first quarter of 2025?,rescued,True,1,6777.7,found 30.36 ≈ 30.4
+M06,medium,procurement,top1,Which material category has the highest total purchase order line value?,first_try,True,0,3107.1,first row names the expected entity
+M07,medium,finance,top1,"Which project has the highest ratio of committed purchase order spend to contract value, with both normalized to TND?",first_try,True,0,5865.8,first row names the expected entity
+M08,medium,procurement,count,"How many purchase orders are still open (issued, confirmed or partially delivered)?",first_try,True,0,2518.3,found 4 ≈ 4
+M09,medium,logistics,scalar,"What is the overall on-time delivery rate across all delivered shipments, as a percentage?",first_try,True,0,3065.2,found 76.96 ≈ 77
+M10,medium,tendering,top1,Which client has the most projects?,first_try,True,0,2730.4,first row names the expected entity
+M11,medium,logistics,scalar,"What is the total freight cost in TND of all shipments bound for Libya, whatever their current status?",first_try,True,0,3347.9,found 7.96249e+06 ≈ 7.96249e+06
+M12,medium,procurement,count,How many supplier quotations scored below the technical evaluation threshold of 70?,first_try,True,0,3044.5,found 184 ≈ 184
+M13,medium,procurement,top1,Which supplier submitted the most quotations?,first_try,True,0,2839.0,first row names the expected entity
+M14,medium,procurement,top1,"Which supplier has the highest average technical evaluation (TBE) score, considering suppliers with at least 10 quotations?",first_try,True,0,3395.7,first row names the expected entity
+M15,medium,finance,count,How many payments are still unpaid and past their due date as of today?,wrong,False,0,2989.5,"expected 15, numeric cells seen [1]"

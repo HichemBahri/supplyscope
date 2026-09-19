@@ -132,3 +132,22 @@ def test_agent_reader_can_select_but_not_write():
         assert c.execute("SELECT count(*) FROM es.alerts").fetchone()[0] > 0
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             c.execute("DELETE FROM es.alerts")
+
+
+def test_agent_schema_doc_exposes_expert_system():
+    """Regression for a defect found by the Phase 15 benchmark: es.alerts
+    was absent from the agent's schema document, so alert questions could
+    only be answered by guessing. The table, its status vocabulary and the
+    full rule catalog must all be visible to the agent."""
+    from app.agent.runner import _schema_doc
+    from app.expert.engine import ensure_ddl
+    from app.expert.rules import RULES
+    import app.agent.runner as runner
+    ensure_ddl()
+    runner._schema_cache = None            # force a fresh introspection
+    doc = _schema_doc()
+    assert "### es.alerts" in doc
+    assert "es.<table>" in doc             # the header tells the agent to qualify
+    for r in RULES:
+        assert r.code in doc, f"rule {r.code} not discoverable"
+    assert "'acknowledged'" in doc         # status vocabulary via CHECK

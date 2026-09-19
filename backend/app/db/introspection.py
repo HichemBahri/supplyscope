@@ -13,7 +13,9 @@ import time
 import psycopg
 
 _SCHEMA = "erp"
-_SCHEMAS = ("erp", "ml")
+# es = expert-system alerts. Omitting it was a defect found by the Phase 15
+# benchmark: the agent was asked about alerts it had never been told exist.
+_SCHEMAS = ("erp", "ml", "es")
 
 _TABLES_SQL = """
 SELECT n.nspname AS schema_name, c.relname AS table_name,
@@ -127,9 +129,10 @@ def build_schema_doc(dsn: str) -> str:
         _attach_sample_values(cur, tables)
 
     parts: list[str] = [
-        f"PostgreSQL schemas `erp` (operational data) and `ml` "
-        f"(machine-learning outputs) — {len(tables)} tables. All queries "
-        "MUST use fully qualified names (erp.<table> / ml.<table>).\n"
+        f"PostgreSQL schemas `erp` (operational data), `ml` "
+        f"(machine-learning outputs) and `es` (expert-system alerts) — "
+        f"{len(tables)} tables. All queries MUST use fully qualified names "
+        "(erp.<table> / ml.<table> / es.<table>).\n"
     ]
     for name, info in tables.items():
         parts.append(f"### {info['schema']}.{name}")

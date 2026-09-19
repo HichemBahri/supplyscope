@@ -64,6 +64,14 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 def ensure_ddl() -> None:
     with psycopg.connect(get_settings().app_dsn, autocommit=True) as c:
         c.execute(_DDL)
+    # keep the rule vocabulary discoverable by the NL agent
+    catalog = "; ".join(f"{r.code} = {r.name} [{r.severity}]" for r in RULES)
+    with psycopg.connect(get_settings().app_dsn, autocommit=True) as conn:
+        # COMMENT is a utility statement: no bind parameters, so quote as a
+        # literal (psycopg escapes it) rather than interpolating a string
+        from psycopg import sql
+        conn.execute(sql.SQL("COMMENT ON COLUMN es.alerts.rule_code IS {}").format(
+            sql.Literal(f"Rule that raised the alert. One of: {catalog}")))
 
 
 def _render(template: str, row: dict) -> str:
