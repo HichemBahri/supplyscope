@@ -126,7 +126,7 @@ def test_zero_rate_views_are_dropped():
         a = fake_ask(question, tier)
         if not a.failed:
             a.columns = ["quarter", "otd_rate_pct"]
-            a.rows = [["2026-Q1", 0], ["2026-Q2", 0.0], ["2026-Q3", "0"]]
+            a.rows = [["2026-Q1", 0], ["2026-Q2", None], ["2026-Q3", "0"]]
             a.chart = {"chart_type": "kpi", "title": "On-time rate",
                        "value_field": "otd_rate_pct"}
         return a

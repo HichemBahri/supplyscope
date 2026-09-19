@@ -124,6 +124,8 @@ def synthesize_dashboard(topic: str, user_id: int,
                 mi = _metric_idx()
 
                 def _zero(v) -> bool:
+                    if v is None:      # NULL rate = empty window: equally
+                        return True    # degenerate, ships as a fake "0%"
                     try:
                         return float(v) == 0.0
                     except (TypeError, ValueError):

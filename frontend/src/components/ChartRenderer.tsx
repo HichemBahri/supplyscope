@@ -51,7 +51,15 @@ export function ChartRenderer({ spec, columns, rows, height = 300 }: Props) {
   } else if (spec.chart_type === "line") {
     // sort by x so lines never travel backwards in time
     const xi = columns.indexOf(spec.x_field ?? "");
-    const sorted = xi >= 0
+    // sort chronologically ONLY when x is unambiguously orderable as text:
+    // real dates, or year-first labels (2024-Q1, 2024-03). Labels like
+    // "Q1 2024" sort by quarter-then-year lexically, scrambling time —
+    // for those we trust the query's own ORDER BY and leave rows alone.
+    const xs = xi >= 0 ? rows.map((r) => String(r[xi])) : [];
+    const orderable = xs.length > 0 && (
+      xs.every((v) => !Number.isNaN(Date.parse(v))) ||
+      xs.every((v) => /^\d{4}([-/ ]|$)/.test(v)));
+    const sorted = orderable
       ? [...rows].sort((a, b) => String(a[xi]).localeCompare(String(b[xi])))
       : rows;
     const ci = spec.color_field ? columns.indexOf(spec.color_field) : -1;
@@ -120,7 +128,7 @@ export function ChartRenderer({ spec, columns, rows, height = 300 }: Props) {
         transition: { duration: 450, easing: "cubic-in-out" },
       } as never}
       config={{ displayModeBar: false, responsive: true } as never}
-      style={{ width: "100%" }}
+      style={{ width: "100%", height: effHeight }}
       useResizeHandler
     />
   );
