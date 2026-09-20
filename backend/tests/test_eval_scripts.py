@@ -39,3 +39,19 @@ def test_ablation_covers_ml_and_is_sane():
     assert 0 <= s["ml_risk"]["winner_change_rate"] <= 100
     assert len(s["ml_risk"]["changed_cases"]) == round(
         s["ml_risk"]["winner_change_rate"] * s["ml_risk"]["cases"] / 100)
+
+
+def test_divergence_audit_attributes_gap_to_simulator_flaw():
+    """The 'actual awards' distance on the frontier is dominated by the
+    generator's nominal-currency bid comparison — a documented world
+    artifact, not optimizer superiority. The audit must say so."""
+    from scripts.eval_optimizer import divergence_audit
+    aud = divergence_audit()
+    assert aud
+    art = sum(r["overpaid_tnd"] for r in aud if r["nominal_illusion"])
+    tot = sum(r["overpaid_tnd"] for r in aud)
+    assert art / tot > 0.9                      # the gap IS the artifact
+    for r in aud:
+        if r["nominal_illusion"]:
+            assert r["actual_ccy"] != r["cheapest_ccy"]
+            assert r["actual_nominal"] < r["cheapest_nominal"] < r["actual_tnd"]
