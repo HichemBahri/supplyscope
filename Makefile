@@ -50,6 +50,14 @@ demo-alerts:  ## jury demo: trip alert rules against the live stack
 bench-agent:  ## Phase 15: run the agent accuracy benchmark (real LLM calls; cached per question)
 	set -a && . ./.env && set +a && cd backend && uv run python -m scripts.bench_agent $(ARGS)
 
+eval-optimizer:  ## Phase 15b: optimizer sensitivity sweep -> efficient frontier figures (no LLM)
+	set -a && . ./.env && set +a && cd backend && uv run python -m scripts.eval_optimizer
+
+eval-recommender:  ## Phase 15c: recommender criterion ablation (no LLM)
+	set -a && . ./.env && set +a && cd backend && uv run python -m scripts.eval_recommender
+
+eval-all: eval-optimizer eval-recommender  ## both deterministic evaluations
+
 bench-scale:  ## pandas-vs-Spark crossover benchmark (needs: uv sync --group bigdata + a JRE)
 	cd backend && uv run python -m scripts.bench_scale
 
