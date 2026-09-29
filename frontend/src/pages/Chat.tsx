@@ -24,6 +24,7 @@ export default function Chat() {
   const [error, setError] = useState("");
   const [pinTarget, setPinTarget] = useState<Message | null>(null);
   const [toast, setToast] = useState("");
+  const [tier, setTier] = useState<"fast" | "smart">("fast");
   const bottom = useRef<HTMLDivElement>(null);
 
   useEffect(() => { api.conversations().then(setConversations).catch(() => {}); }, []);
@@ -42,7 +43,7 @@ export default function Chat() {
       sql_query: null, chart: null, result_meta: null, created_at: "",
     }]);
     try {
-      const turn = await api.chat(text, activeId ?? undefined);
+      const turn = await api.chat(text, activeId ?? undefined, tier);
       setActiveId(turn.conversation_id);
       setMessages((m) => [...m.slice(0, -1), turn.user_message, turn.assistant_message]);
       api.conversations().then(setConversations).catch(() => {});
@@ -143,6 +144,15 @@ export default function Chat() {
               placeholder="e.g. spend by material category this quarter…"
               className="flex-1 rounded-md border border-line bg-canvas px-4 py-2.5 text-sm focus:border-action focus:outline-none focus:ring-2 focus:ring-action/20"
             />
+            <select
+              value={tier}
+              onChange={(e) => setTier(e.target.value as "fast" | "smart")}
+              title="Model tier: fast for everyday questions, smart for hard ones"
+              className="rounded-md border border-line bg-canvas px-2 py-2.5 text-sm"
+            >
+              <option value="fast">fast</option>
+              <option value="smart">smart</option>
+            </select>
             <Button disabled={busy || !question.trim()} className="!px-3">
               <SendHorizonal className="size-4.5" />
             </Button>
