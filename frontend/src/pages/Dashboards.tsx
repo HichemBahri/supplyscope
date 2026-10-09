@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Globe2, Lock, Plus } from "lucide-react";
 import { useRef } from "react";
 import { Trash2, Wand2 } from "lucide-react";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import type { DashboardSummary } from "../lib/types";
 import { Button } from "../components/ui/Button";
@@ -23,7 +23,11 @@ export default function Dashboards() {
     e.preventDefault(); e.stopPropagation();
     if (!window.confirm("Delete this dashboard? Its pinned charts survive."))
       return;
-    await api.deleteDashboard(id);
+    try {
+      await api.deleteDashboard(id);
+    } catch (err) {
+      window.alert(err instanceof ApiError ? `Could not delete: ${err.message}` : "Could not delete this dashboard.");
+    }
     load();
   };
 
@@ -129,7 +133,17 @@ export default function Dashboards() {
                 — {report.created.length}/{report.planned} views built
                 {report.failed.length > 0 && (
                   <span className="text-warn"> · {report.failed.length} dropped
-                    (no data / unanswerable) — quality gates working</span>
+                    by the quality gates</span>
+                )}
+                {report.failed.length > 0 && (
+                  <ul className="mt-2 space-y-1 border-t border-line pt-2">
+                    {report.failed.map((f) => (
+                      <li key={f.question} className="text-ink-muted">
+                        <span className="text-ink">{f.question}</span>
+                        <span className="block text-[11px] text-warn">{f.reason}</span>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
             )}

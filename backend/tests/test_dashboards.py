@@ -20,7 +20,22 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture()
 def client() -> TestClient:
-    return TestClient(create_app())
+    """Every dashboard created through this client is deleted at teardown,
+    so test boards never linger in a shared database (they used to show up
+    as ghost "Dana Karray" boards in the real interface)."""
+    c = TestClient(create_app())
+    created: list[int] = []
+    real_post = c.post
+
+    def tracking_post(url, *a, **kw):
+        r = real_post(url, *a, **kw)
+        if url == "/api/dashboards" and r.status_code == 201:
+            created.append(r.json()["dashboard_id"])
+        return r
+    c.post = tracking_post          # type: ignore[method-assign]
+    yield c
+    for did in created:
+        app_repo.delete_dashboard(did)
 
 
 def register(client: TestClient, role: str | None = None) -> dict:
@@ -172,3 +187,21 @@ def test_shared_chart_update_reaches_non_owner(client):
                 w.execute("DELETE FROM erp.clients WHERE client_code = %s", (code,))
 
     asyncio.run(body())
+
+
+def test_admin_can_delete_any_dashboard_and_owner_cannot_delete_others(client):
+    admin = register(client, role="admin")
+    a1, a2 = register(client), register(client)
+    d = client.post("/api/dashboards", headers=a1["auth"],
+                    json={"title": "a1 board"}).json()
+    # another analyst is refused
+    assert client.delete(f"/api/dashboards/{d['dashboard_id']}",
+                         headers=a2["auth"]).status_code == 403
+    # the administrator may remove it (moderation), and it is audited
+    assert client.delete(f"/api/dashboards/{d['dashboard_id']}",
+                         headers=admin["auth"]).status_code == 204
+    assert client.get(f"/api/dashboards/{d['dashboard_id']}",
+                      headers=a1["auth"]).status_code == 404
+    rows = client.get("/api/admin/audit", headers=admin["auth"],
+                      params={"action": "dashboard.deleted_by_admin"}).json()
+    assert any(r["detail"].get("dashboard_id") == d["dashboard_id"] for r in rows)

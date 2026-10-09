@@ -12,7 +12,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.agent import prompts
-from app.agent.charts import ChartSpecError, parse_chart_spec
+from app.agent.charts import ChartSpecError, parse_chart_spec, repair_axes
 from app.agent.state import AgentState
 from app.db.safe_executor import (
     SQLExecutionError,
@@ -32,6 +32,24 @@ def extract_sql(text: str) -> str:
         return m.group(1).strip()
     if m := _ANY_FENCE.search(text):
         return m.group(1).strip()
+    return text.strip()
+
+
+_MD_HEADING = re.compile(r"^\s{0,3}#{1,6}\s*", re.M)
+_MD_EMPHASIS = re.compile(r"(\*\*|__)(.+?)\1|(?<!\w)(\*|_)(?!\s)(.+?)\3(?!\w)", re.S)
+_MD_BULLET = re.compile(r"^\s*[-*+]\s+", re.M)
+_MD_FENCE = re.compile(r"```[a-zA-Z]*\n?|```")
+
+
+def strip_markdown(text: str) -> str:
+    """The chat bubble renders plain text: remove Markdown markers a model
+    may still emit (headings, bold/italic, bullets, code fences) and
+    collapse the blank lines that headings leave behind."""
+    text = _MD_FENCE.sub("", text)
+    text = _MD_HEADING.sub("", text)
+    text = _MD_EMPHASIS.sub(lambda m: m.group(2) or m.group(4) or "", text)
+    text = _MD_BULLET.sub("", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
 
@@ -110,7 +128,8 @@ def build_nodes(llm: BaseChatModel):
                 raw = m.group(1)
             try:
                 spec = parse_chart_spec(raw.strip(), state["columns"])
-                return {"chart": spec.model_dump()}
+                return {"chart": repair_axes(spec.model_dump(), state["columns"],
+                                             state.get("rows", []))}
             except (ChartSpecError, json.JSONDecodeError) as exc:
                 messages = [SystemMessage(prompts.CHART_SYSTEM), user,
                             reply,
@@ -133,6 +152,6 @@ def build_nodes(llm: BaseChatModel):
                 truncated_note=truncated_note,
                 result_table=_result_table(state))),
         ])
-        return {"answer": reply.content.strip()}
+        return {"answer": strip_markdown(reply.content)}
 
     return generate_sql, execute_sql, fix_sql, decide_chart, synthesize_answer

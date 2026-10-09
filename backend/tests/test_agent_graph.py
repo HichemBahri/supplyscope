@@ -83,3 +83,17 @@ def test_write_attempt_is_blocked_and_corrected():
     out = build_graph(llm).invoke(dict(BASE_STATE))
     assert "Only SELECT/WITH" in out["attempts"][0]["error"]
     assert out["answer"] == "Blocked then answered."
+
+
+def test_answers_are_plain_prose():
+    """The chat bubble renders raw text: Markdown a model may emit is
+    stripped before the answer is stored or shown."""
+    from app.agent.nodes import strip_markdown
+    raw = ("## Spend 2025\n\nTotal **TND 54,275,755.41**, peak in *May*.\n"
+           "- first\n- second\n```sql\nSELECT 1\n```")
+    out = strip_markdown(raw)
+    assert "#" not in out and "**" not in out and "```" not in out
+    assert out.startswith("Spend 2025")
+    assert "TND 54,275,755.41" in out and "May" in out
+    # arithmetic and identifiers survive
+    assert strip_markdown("ratio 2*3, code a_b_c") == "ratio 2*3, code a_b_c"

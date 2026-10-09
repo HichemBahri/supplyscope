@@ -42,12 +42,15 @@ def audit(action: str, user_id: int | None = None, **detail) -> None:
 
 
 def recent(limit: int = 100, action: str | None = None) -> list[dict]:
+    """Most recent audit entries, newest first, with the actor's identity
+    joined in (NULL for entries whose user was deleted since)."""
     from psycopg.rows import dict_row
+    base = ("SELECT a.audit_id, a.user_id, a.action, a.detail, a.created_at, "
+            "u.email, u.first_name, u.last_name "
+            "FROM app.audit_log a LEFT JOIN app.users u USING (user_id) ")
     with psycopg.connect(get_settings().app_dsn, row_factory=dict_row) as c:
         ensure_ddl()
         if action:
-            return c.execute(
-                "SELECT * FROM app.audit_log WHERE action = %s "
-                "ORDER BY audit_id DESC LIMIT %s", (action, limit)).fetchall()
-        return c.execute("SELECT * FROM app.audit_log "
-                         "ORDER BY audit_id DESC LIMIT %s", (limit,)).fetchall()
+            return c.execute(base + "WHERE a.action = %s "
+                             "ORDER BY a.audit_id DESC LIMIT %s", (action, limit)).fetchall()
+        return c.execute(base + "ORDER BY a.audit_id DESC LIMIT %s", (limit,)).fetchall()

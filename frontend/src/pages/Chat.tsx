@@ -107,11 +107,11 @@ export default function Chat() {
             {messages.length === 0 && !busy && (
               <div className="mt-16 text-center">
                 <h2 className="font-display text-2xl font-bold text-navy-900">
-                  Ask your operational data
+                  Chat with your Data
                 </h2>
                 <p className="mx-auto mt-2 max-w-md text-sm text-ink-muted">
-                  Ask a question in plain language — the agent writes the query,
-                  runs it read-only and picks the right visualization.
+                  Ask anything about your operations. The agent translates your question into
+                  precise data, charts, and actionable insights.
                 </p>
                 <div className="mx-auto mt-6 grid max-w-xl gap-2 sm:grid-cols-2">
                   {SUGGESTIONS.map((s) => (

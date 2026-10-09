@@ -13,6 +13,7 @@ interface Props {
 
 export function MessageBubble({ message, onPin }: Props) {
   const [showSql, setShowSql] = useState(false);
+  const [showAttempts, setShowAttempts] = useState(false);
   const isUser = message.role === "user";
   const meta = message.result_meta;
   // Any validated spec is pinnable — tables included: a saved table lives on
@@ -69,9 +70,15 @@ export function MessageBubble({ message, onPin }: Props) {
             </button>
           )}
           {meta?.attempts.length ? (
-            <span className="flex items-center gap-1 text-[13px] text-ink-muted">
-              <RotateCcw className="size-3.5" /> self-correction
-            </span>
+            <button
+              onClick={() => setShowAttempts(!showAttempts)}
+              className="flex items-center gap-1.5 text-[13px] font-medium text-action hover:text-action-strong"
+              title="Show the failed attempts and the database errors the agent corrected"
+            >
+              <RotateCcw className="size-3.5" />
+              self-correction ×{meta.attempts.length}
+              <ChevronDown className={clsx("size-3.5 transition-transform", showAttempts && "rotate-180")} />
+            </button>
           ) : null}
           {hasChart && onPin && (
             <Button variant="ghost" className="ml-auto !px-2.5 !py-1 text-[13px]"
@@ -80,6 +87,19 @@ export function MessageBubble({ message, onPin }: Props) {
             </Button>
           )}
         </div>
+
+        {showAttempts && meta?.attempts.length ? (
+          <div className="border-t border-line bg-canvas px-4 py-3 text-[12.5px]">
+            {meta.attempts.map((a, i) => (
+              <div key={i} className={clsx(i > 0 && "mt-3 border-t border-line pt-3")}>
+                <div className="eyebrow">attempt {i + 1} · rejected</div>
+                <pre className="mt-1 overflow-x-auto rounded bg-navy-900 px-3 py-2 font-mono text-white/90">{a.sql}</pre>
+                <div className="mt-1 font-mono text-danger">{a.error}</div>
+              </div>
+            ))}
+            <div className="eyebrow mt-3">attempt {meta.attempts.length + 1} · accepted (see SQL)</div>
+          </div>
+        ) : null}
 
         {showSql && message.sql_query && (
           <pre className="overflow-x-auto border-t border-line bg-navy-900 px-4 py-3 font-mono text-[12.5px] leading-relaxed text-white/90">

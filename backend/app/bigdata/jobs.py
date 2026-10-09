@@ -80,10 +80,24 @@ def spark_job(spark, parquet_path: str):
     return supplier_stats.toPandas(), price_index.toPandas()
 
 
-def make_spark(app_name: str = "supplyscope-bench"):
+def make_spark(app_name: str = "supplyscope-bench",
+               driver_memory: str | None = None):
+    """Local-mode session. In local mode the driver IS the executor, so
+    `spark.driver.memory` is the whole heap the job can use; Spark's
+    default of 1 GB is far below what a laptop offers and made the exact
+    percentile fail at 30 M rows. Set SPARK_DRIVER_MEMORY (e.g. 8g) to
+    size it to the machine; the benchmark records the value used."""
+    import os
+
     from pyspark.sql import SparkSession
+    mem = driver_memory or os.environ.get("SPARK_DRIVER_MEMORY", "6g")
+    # the heap is a JVM launch option: pass it to spark-submit as well, so
+    # it applies even if the gateway was configured before the builder
+    os.environ.setdefault("PYSPARK_SUBMIT_ARGS",
+                          f"--driver-memory {mem} pyspark-shell")
     return (SparkSession.builder.appName(app_name)
             .master("local[*]")
+            .config("spark.driver.memory", mem)
             .config("spark.sql.shuffle.partitions", "8")
             .config("spark.ui.enabled", "false")
             .getOrCreate())

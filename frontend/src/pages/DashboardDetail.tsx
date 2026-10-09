@@ -275,11 +275,25 @@ export default function DashboardDetail() {
             <p className="mt-1 text-sm text-ink-muted">Charts you pinned from the Assistant.</p>
             <div className="mt-3 flex flex-col gap-2">
               {myCharts.filter((c) => !onBoard.has(c.chart_id)).map((c) => (
-                <button key={c.chart_id} onClick={() => addChart(c.chart_id)}
-                        className="rounded-md border border-line px-3 py-2.5 text-left text-sm transition-colors hover:border-action/50 hover:bg-action/5">
-                  <span className="font-medium text-ink">{c.title}</span>
-                  <span className="eyebrow ml-2">{c.chart_spec.chart_type}</span>
-                </button>
+                <div key={c.chart_id}
+                     className="flex items-center rounded-md border border-line text-sm transition-colors hover:border-action/50 hover:bg-action/5">
+                  <button onClick={() => addChart(c.chart_id)}
+                          className="flex-1 px-3 py-2.5 text-left">
+                    <span className="font-medium text-ink">{c.title}</span>
+                    <span className="eyebrow ml-2">{c.chart_spec.chart_type}</span>
+                  </button>
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (!window.confirm(`Delete the pinned chart "${c.title}"? It will disappear from every dashboard that uses it.`)) return;
+                      await api.deleteChart(c.chart_id);
+                      setMyCharts((cs) => cs.filter((x) => x.chart_id !== c.chart_id));
+                    }}
+                    title="Delete this pinned chart"
+                    className="px-3 py-2.5 text-ink-muted hover:text-danger">
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
               ))}
               {myCharts.filter((c) => !onBoard.has(c.chart_id)).length === 0 && (
                 <p className="text-sm text-ink-muted">

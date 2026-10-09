@@ -105,3 +105,20 @@ def test_admin_crud_and_guards(client):
     assert client.delete(f"/api/admin/users/{b['user']['user_id']}",
                          headers=a["auth"]).status_code == 204
     assert client.get("/api/me", headers=b["auth"]).status_code == 401
+
+
+def test_audit_trail_is_admin_only_and_lists_actions(client):
+    a, b = _make_admin_pair(client)
+    # analyst is refused
+    assert client.get("/api/admin/audit", headers=b["auth"]).status_code == 403
+    # a role change by the admin leaves a traceable entry with the actor joined in
+    client.patch(f"/api/admin/users/{b['user']['user_id']}", headers=a["auth"],
+                 json={"role": "manager"})
+    rows = client.get("/api/admin/audit", headers=a["auth"],
+                      params={"action": "user.role_changed", "limit": 50}).json()
+    mine = [r for r in rows if r["detail"].get("target") == b["user"]["user_id"]]
+    assert mine and mine[0]["email"] == a["user"]["email"]
+    assert {"audit_id", "action", "detail", "created_at"} <= set(mine[0])
+    # limit is capped server-side
+    assert len(client.get("/api/admin/audit", headers=a["auth"],
+                          params={"limit": 10}).json()) <= 10

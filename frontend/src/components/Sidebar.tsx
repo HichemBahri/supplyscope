@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { MessageSquareText, LayoutDashboard, LogOut, Users, UserRound, BrainCircuit, BellRing, Scale, SlidersHorizontal } from "lucide-react";
+import { MessageSquareText, LayoutDashboard, LogOut, Users, UserRound, BrainCircuit, BellRing, Scale, SlidersHorizontal, ScrollText } from "lucide-react";
 import { clsx } from "clsx";
 import { useAuth } from "../lib/auth";
 import { Avatar } from "./Avatar";
@@ -17,7 +17,8 @@ export function Sidebar() {
     { to: "/recommend", label: "Recommend", icon: Scale },
     { to: "/optimize", label: "Optimize", icon: SlidersHorizontal },
     ...(user?.role === "admin"
-      ? [{ to: "/team", label: "Team", icon: Users }]
+      ? [{ to: "/team", label: "Team", icon: Users },
+         { to: "/audit", label: "Audit", icon: ScrollText }]
       : []),
   ];
 

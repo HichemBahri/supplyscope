@@ -44,7 +44,7 @@ front:           ## Run the React frontend in dev mode (http://localhost:5173)
 train:  ## Train the delivery-risk model ladder and activate the winner
 	cd backend && uv run python -m app.ml.train_risk
 
-demo-alerts:  ## jury demo: trip alert rules against the live stack
+demo-alerts:  ## defence demo: trip alert rules against the live stack
 	cd backend && uv run python -m scripts.demo_alerts
 
 bench-agent:  ## Phase 15: run the agent accuracy benchmark (real LLM calls; cached per question)

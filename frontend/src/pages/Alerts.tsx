@@ -163,7 +163,7 @@ export default function Alerts() {
         {/* rule catalog */}
         <section className="mt-10">
           <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-muted uppercase font-display mb-2">
-            Rule catalog — {rules.length} declarative rules
+            Rule catalog: {rules.length} declarative rules
           </p>
           <Card className="divide-y divide-line/60">
             {rules.map((r) => (

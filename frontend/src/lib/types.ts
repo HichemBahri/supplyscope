@@ -226,3 +226,14 @@ export interface OptResponse {
     rfqs_ceiling_waived: number; waived_rfq_refs: string[] };
   note?: string;
 }
+
+export interface AuditEntry {
+  audit_id: number;
+  user_id: number | null;
+  action: string;
+  detail: Record<string, unknown>;
+  created_at: string;
+  email?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+}

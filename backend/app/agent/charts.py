@@ -87,3 +87,44 @@ def parse_chart_spec(payload: str | dict, columns: list[str]):
             f"Spec references non-existent result columns {unknown}; "
             f"available columns: {columns}")
     return spec
+
+
+def _is_numeric_column(columns: list[str], rows: list, name: str) -> bool:
+    """True when the first non-null values of a result column are numbers
+    (bool excluded). Works on the raw rows the executor returned."""
+    from decimal import Decimal
+    if name not in columns:
+        return False
+    i = columns.index(name)
+    seen = 0
+    for r in rows:
+        v = r[i] if i < len(r) else None
+        if v is None:
+            continue
+        if isinstance(v, bool) or not isinstance(v, (int, float, Decimal)):
+            return False
+        seen += 1
+        if seen >= 5:
+            break
+    return seen > 0
+
+
+def repair_axes(spec: dict, columns: list[str], rows: list) -> dict:
+    """Deterministic repair of a swapped bar/line specification.
+
+    Models sometimes put the numeric column in ``x_field`` and the category
+    in ``y_fields`` (a mental picture of a horizontal bar), which the
+    renderer then draws as thin lines. When every y field is non-numeric
+    and the x field is numeric, the two are swapped. Idempotent."""
+    if spec.get("chart_type") not in ("bar", "line"):
+        return spec
+    x, ys = spec.get("x_field"), list(spec.get("y_fields") or [])
+    if not x or not ys:
+        return spec
+    if (_is_numeric_column(columns, rows, x)
+            and not any(_is_numeric_column(columns, rows, y) for y in ys)):
+        fixed = dict(spec)
+        fixed["x_field"], fixed["y_fields"] = ys[0], [x]
+        fixed["_repaired"] = "axes swapped: numeric x_field, categorical y_fields"
+        return fixed
+    return spec

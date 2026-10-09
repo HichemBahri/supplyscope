@@ -76,3 +76,21 @@ def test_hopeless_chart_falls_back_to_table():
     )
     out = build_graph(llm).invoke(dict(BASE_STATE))
     assert out["chart"]["chart_type"] == "table"
+
+
+def test_swapped_bar_axes_are_repaired():
+    """Field case: the smart tier put the numeric delay in x_field and the
+    supplier name in y_fields for a horizontal bar, which rendered as thin
+    lines. The repair swaps them; a correct spec is left untouched."""
+    from decimal import Decimal
+    from app.agent.charts import repair_axes
+    cols = ["supplier_name", "avg_delay_days", "n"]
+    rows = [["Trans-Sahara", Decimal("20.44"), 18], ["Valencia", Decimal("11.0"), 11]]
+    bad = {"chart_type": "bar", "title": "Delay by supplier", "orientation": "h",
+           "x_field": "avg_delay_days", "y_fields": ["supplier_name"], "stacked": False}
+    fixed = repair_axes(bad, cols, rows)
+    assert fixed["x_field"] == "supplier_name" and fixed["y_fields"] == ["avg_delay_days"]
+    good = {"chart_type": "bar", "title": "Delay by supplier", "orientation": "h",
+            "x_field": "supplier_name", "y_fields": ["avg_delay_days"], "stacked": False}
+    assert repair_axes(good, cols, rows) == good
+    assert repair_axes(fixed, cols, rows)["x_field"] == "supplier_name"   # idempotent

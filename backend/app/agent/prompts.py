@@ -76,7 +76,9 @@ Rules:
 - If the result set is empty, say so plainly and suggest one likely reason.
 - If results were truncated, mention that only the first rows are shown.
 - Never invent values that are not in the result rows.
-- 2 to 5 sentences maximum."""
+- 2 to 5 sentences maximum.
+- Plain prose only: no Markdown, no headings, no bullet points, no bold or \
+italic markers, no code fences. The text is displayed verbatim."""
 
 ANSWER_USER = """Question: {question}
 

@@ -64,6 +64,12 @@ export const api = {
     request<import("./types").User>(`/api/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   adminDeleteUser: (id: number) =>
     request<void>(`/api/admin/users/${id}`, { method: "DELETE" }),
+  adminAudit: (q: { limit?: number; action?: string } = {}) => {
+    const qs = new URLSearchParams();
+    if (q.limit) qs.set("limit", String(q.limit));
+    if (q.action) qs.set("action", q.action);
+    return request<import("./types").AuditEntry[]>(`/api/admin/audit${qs.size ? `?${qs}` : ""}`);
+  },
   dashboards: () => request<import("./types").DashboardSummary[]>("/api/dashboards"),
   createDashboard: (title: string, description?: string) =>
     request<import("./types").DashboardSummary>("/api/dashboards", {

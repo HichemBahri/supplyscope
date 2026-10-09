@@ -12,6 +12,7 @@ from app.api.schemas import (
     DashboardUpdate,
 )
 from app.db import app_repo
+from app.services.audit import audit
 
 router = APIRouter(prefix="/api/dashboards", tags=["dashboards"])
 
@@ -83,8 +84,12 @@ def update(dashboard_id: int, body: DashboardUpdate, request: Request,
 def delete(dashboard_id: int, request: Request,
            user: dict = Depends(get_current_user)) -> None:
     dash = _load(dashboard_id)
-    _require_owner(dash, user)
+    if user["role"] != "admin":          # admins moderate: they may remove any board
+        _require_owner(dash, user)
     app_repo.delete_dashboard(dashboard_id)
+    if dash["owner_id"] != user["user_id"]:
+        audit("dashboard.deleted_by_admin", user["user_id"],
+              dashboard_id=dashboard_id, owner_id=dash["owner_id"], title=dash["title"])
     _reindex(request)
 
 

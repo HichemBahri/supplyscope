@@ -14,6 +14,7 @@ import Recommend from "./pages/Recommend";
 import Predictions from "./pages/Predictions";
 import Profile from "./pages/Profile";
 import Team from "./pages/Team";
+import Audit from "./pages/Audit";
 
 function AdminOnly({ children }: { children: React.ReactElement }) {
   const { user } = useAuth();
@@ -50,6 +51,7 @@ export default function App() {
             <Route path="/optimize" element={<Optimize />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/team" element={<AdminOnly><Team /></AdminOnly>} />
+            <Route path="/audit" element={<AdminOnly><Audit /></AdminOnly>} />
           </Route>
           <Route path="*" element={<Navigate to="/chat" replace />} />
         </Routes>
